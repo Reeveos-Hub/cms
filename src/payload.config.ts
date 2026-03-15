@@ -5,12 +5,19 @@ import { seoPlugin } from '@payloadcms/plugin-seo'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
-// Collections
+// Collections — Website Builder
 import { Users } from './collections/Users'
 import { Tenants } from './collections/Tenants'
 import { Pages } from './collections/Pages'
 import { Media } from './collections/Media'
 import { WebsiteSettings } from './globals/WebsiteSettings'
+
+// Collections — Help Centre
+import { HelpCategories } from './collections/HelpCategories'
+import { HelpArticles } from './collections/HelpArticles'
+import { HelpWalkthroughs } from './collections/HelpWalkthroughs'
+import { HelpCourses } from './collections/HelpCourses'
+import { HelpMedia } from './collections/HelpMedia'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -23,7 +30,7 @@ export default buildConfig({
     },
   },
 
-  collections: [Users, Tenants, Pages, Media],
+  collections: [Users, Tenants, Pages, Media, HelpCategories, HelpArticles, HelpWalkthroughs, HelpCourses, HelpMedia],
 
   globals: [WebsiteSettings],
 
@@ -55,4 +62,11 @@ export default buildConfig({
   },
 
   serverURL: process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000',
+
+  cors: [
+    'https://reeveos.app',
+    'https://www.reeveos.app',
+    'http://localhost:5173',
+    'http://localhost:4173',
+  ],
 })
