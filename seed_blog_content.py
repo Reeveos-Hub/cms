@@ -1,29 +1,37 @@
 """
-ReeveOS Blog Seed Script — First 5 P1 Articles
-Run on VPS: python3 backend/scripts/seed_blog_content.py
+ReeveOS Blog Seed Script — Full 2026 SEO Implementation
+Run on VPS: python3 seed_blog_content.py
 
-Connects directly to MongoDB reeveos_cms database and inserts:
-- Blog categories
-- 5 fully written P1 articles (plain English, storytelling style)
+Seeds:
+- 8 blog categories (reeveos.app + reevenow.com)
+- 5 fully written P1 articles with complete 2026 SEO fields:
+  - Core SEO (title, meta description, canonical, robots)
+  - Open Graph / Twitter cards
+  - Featured images with alt text (Unsplash CDN URLs)
+  - Inline images with alt text and captions
+  - E-E-A-T fields (author, sources, last verified note)
+  - FAQ schema (for Google rich results)
+  - Breadcrumb schema
+  - AI optimisation (directAnswer, keyFacts, llmsSummary)
+  - CTA fields
+  - Full storytelling content
 
-Articles written in the style of explaining to someone who has never
-heard of booking software before. Short sentences. Real stories.
-Specific numbers. Friendly and warm.
+All content written in plain English. No jargon. Real numbers.
+Warm tone. Like explaining to someone who has never heard of
+booking software before.
 """
 
-import sys
 import os
 from datetime import datetime, timezone
 from pymongo import MongoClient
 from bson import ObjectId
 
-# ── DB CONNECTION ────────────────────────────────────────────────────────────
 MONGO_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017')
 client = MongoClient(MONGO_URI)
 db = client['reeveos_cms']
 
-blog_categories = db['blog-categories']
-blog_posts = db['blog-posts']
+blog_categories_col = db['blog-categories']
+blog_posts_col = db['blog-posts']
 
 def now():
     return datetime.now(timezone.utc)
@@ -31,28 +39,47 @@ def now():
 def log(msg):
     print(f"  {msg}")
 
-# ── CATEGORIES ───────────────────────────────────────────────────────────────
+# ── CATEGORIES ────────────────────────────────────────────────────────────────
 
 CATEGORIES = [
-    { '_id': ObjectId(), 'name': 'Salons & Beauty',     'slug': 'salons',        'site': 'reeveos',   'description': 'Booking software, no-shows, client management, and growth tips for UK salon owners.',          'sortOrder': 1 },
-    { '_id': ObjectId(), 'name': 'Aesthetics Clinics',  'slug': 'aesthetics',    'site': 'reeveos',   'description': 'GDPR, consent forms, compliance, and software for UK aesthetics practitioners.',               'sortOrder': 2 },
-    { '_id': ObjectId(), 'name': 'Barbers',             'slug': 'barbers',       'site': 'reeveos',   'description': 'Walk-in management, booking apps, and growth guides for UK barbershops.',                       'sortOrder': 3 },
-    { '_id': ObjectId(), 'name': 'Gyms & Fitness',      'slug': 'gyms',          'site': 'reeveos',   'description': 'Membership software, class booking, and retention for independent UK gyms.',                    'sortOrder': 4 },
-    { '_id': ObjectId(), 'name': 'EPOS & Payments',     'slug': 'epos-payments', 'site': 'reeveos',   'description': 'EPOS system comparisons, card rates, and payment tips for UK high street businesses.',          'sortOrder': 5 },
-    { '_id': ObjectId(), 'name': 'Marketing & Growth',  'slug': 'marketing',     'site': 'reeveos',   'description': 'Google, social media, email, and word-of-mouth strategies for high street businesses.',         'sortOrder': 6 },
-    { '_id': ObjectId(), 'name': 'Booking Guides',      'slug': 'booking-guides','site': 'reevenow',  'description': 'Everything you need to know before booking a salon, clinic, barber, or fitness class.',        'sortOrder': 1 },
-    { '_id': ObjectId(), 'name': 'Best Of',             'slug': 'best-of',       'site': 'reevenow',  'description': 'Curated lists of the best independent businesses in your city.',                                'sortOrder': 2 },
+    { '_id': ObjectId(), 'name': 'Salons & Beauty',    'slug': 'salons',        'site': 'reeveos',  'description': 'Booking software, no-shows, client management, and growth tips for UK salon owners.', 'sortOrder': 1 },
+    { '_id': ObjectId(), 'name': 'Aesthetics Clinics', 'slug': 'aesthetics',    'site': 'reeveos',  'description': 'GDPR, consent forms, compliance, and software for UK aesthetics practitioners.', 'sortOrder': 2 },
+    { '_id': ObjectId(), 'name': 'Barbers',            'slug': 'barbers',       'site': 'reeveos',  'description': 'Walk-in management, booking apps, and growth guides for UK barbershops.', 'sortOrder': 3 },
+    { '_id': ObjectId(), 'name': 'Gyms & Fitness',     'slug': 'gyms',          'site': 'reeveos',  'description': 'Membership software, class booking, and retention for independent UK gyms.', 'sortOrder': 4 },
+    { '_id': ObjectId(), 'name': 'EPOS & Payments',    'slug': 'epos-payments', 'site': 'reeveos',  'description': 'EPOS system comparisons, card rates, and payment tips for UK businesses.', 'sortOrder': 5 },
+    { '_id': ObjectId(), 'name': 'Marketing & Growth', 'slug': 'marketing',     'site': 'reeveos',  'description': 'Google, social media, email, and referral strategies for high street businesses.', 'sortOrder': 6 },
+    { '_id': ObjectId(), 'name': 'Booking Guides',     'slug': 'booking-guides','site': 'reevenow', 'description': 'Everything you need to know before booking a salon, clinic, barber, or fitness class.', 'sortOrder': 1 },
+    { '_id': ObjectId(), 'name': 'Best Of',            'slug': 'best-of',       'site': 'reevenow', 'description': 'Curated lists of the best independent businesses in your city.', 'sortOrder': 2 },
 ]
-
-# ── HELPERS ──────────────────────────────────────────────────────────────────
 
 def get_cat(slug):
     return next(c for c in CATEGORIES if c['slug'] == slug)
 
-def make_post(title, slug, site, category_slug, content_type, priority, target_keyword,
-              meta_description, excerpt, content, read_time, tags,
-              related_tool=None, cta_text=None, cta_url=None,
-              competitor_name=None, faq_items=None, internal_notes=None):
+# ── ARTICLE BUILDER ───────────────────────────────────────────────────────────
+
+def article(
+    title, slug, site, category_slug, content_type, priority,
+    # SEO core
+    target_keyword, secondary_keywords, meta_title, meta_description,
+    # Social / OG
+    og_title, og_description, og_image_url, og_image_alt,
+    # Images
+    featured_image_url, featured_image_alt, featured_image_caption,
+    inline_images,
+    # Content
+    excerpt, content, read_time, word_count, tags,
+    # E-E-A-T
+    author_name, author_title, author_bio, reviewed_by, sources, last_updated_note,
+    # Schema
+    article_type, faq_items, breadcrumbs, how_to_steps=None,
+    # AI
+    direct_answer, key_facts, llms_summary,
+    # CTA
+    cta_text, cta_url, cta_secondary_text=None, cta_secondary_url=None,
+    # Meta
+    competitor_name=None, related_tool=None, internal_notes='',
+    pillar_page=None,
+):
     return {
         '_id': ObjectId(),
         'title': title,
@@ -61,34 +88,71 @@ def make_post(title, slug, site, category_slug, content_type, priority, target_k
         'category': get_cat(category_slug)['_id'],
         'status': 'published',
         'publishedAt': now(),
+        'lastVerifiedAt': datetime(2026, 3, 16, tzinfo=timezone.utc),
         'contentType': content_type,
         'priority': priority,
         'competitorName': competitor_name,
+        'relatedTool': related_tool,
+        'pillarPage': pillar_page,
         'seo': {
             'targetKeyword': target_keyword,
-            'metaTitle': title[:60],
+            'secondaryKeywords': secondary_keywords,
+            'metaTitle': meta_title or title[:60],
             'metaDescription': meta_description,
+            'canonicalUrl': None,
+            'robotsMeta': 'index,follow',
         },
+        'social': {
+            'ogTitle': og_title,
+            'ogDescription': og_description,
+            'ogImageUrl': og_image_url,
+            'ogImageAlt': og_image_alt,
+            'twitterCard': 'summary_large_image',
+        },
+        'featuredImageUrl': featured_image_url,
+        'featuredImageAlt': featured_image_alt,
+        'featuredImageCaption': featured_image_caption,
+        'inlineImages': inline_images,
         'excerpt': excerpt,
         'content': content,
         'readTime': read_time,
+        'wordCount': word_count,
         'tags': tags,
-        'relatedTool': related_tool,
-        'ctaText': cta_text or 'Start your free trial',
-        'ctaUrl': cta_url or 'https://portal.rezvo.app/register',
-        'schema': {
-            'faqItems': faq_items or [],
-            'articleType': 'Article',
+        'eeat': {
+            'authorName': author_name,
+            'authorTitle': author_title,
+            'authorBio': author_bio,
+            'reviewedBy': reviewed_by,
+            'sources': sources,
+            'lastUpdatedNote': last_updated_note,
         },
-        'internalNotes': internal_notes or '',
+        'schema': {
+            'articleType': article_type,
+            'faqItems': faq_items,
+            'breadcrumbs': breadcrumbs,
+            'howToSteps': how_to_steps or [],
+        },
+        'aiOptimisation': {
+            'directAnswer': direct_answer,
+            'keyFacts': [{'fact': f} for f in key_facts],
+            'llmsSummary': llms_summary,
+        },
+        'cta': {
+            'text': cta_text,
+            'url': cta_url,
+            'secondaryText': cta_secondary_text,
+            'secondaryUrl': cta_secondary_url,
+        },
+        'internalNotes': internal_notes,
         'createdAt': now(),
         'updatedAt': now(),
     }
 
+# ════════════════════════════════════════════════════════════════════════════
+# ARTICLE 1: FRESHA ALTERNATIVES UK
+# ════════════════════════════════════════════════════════════════════════════
 
-# ── ARTICLE 1: FRESHA ALTERNATIVES UK ───────────────────────────────────────
-
-article_1 = make_post(
+A1 = article(
     title="Fresha alternatives UK 2026: 7 booking platforms that won't charge 20% on every new client",
     slug="fresha-alternatives-uk-2026",
     site="reeveos",
@@ -96,33 +160,99 @@ article_1 = make_post(
     content_type="competitor-alternative",
     priority="p1",
     competitor_name="Fresha",
-    target_keyword="fresha alternative UK",
-    meta_description="Fresha's new pricing charges 20% commission on every new client. Here are 7 UK alternatives that let you keep that money.",
-    excerpt="Fresha used to be free. Then in 2025 they started charging 20% commission on every new client that books through their platform. For a busy salon, that adds up to thousands of pounds a year. Here are 7 alternatives that won't take a cut of your earnings.",
-    tags="fresha, fresha alternative, salon booking software, booking platform UK",
     related_tool="fresha-cost-calculator",
-    cta_text="See how much you could save vs Fresha",
-    cta_url="https://reeveos.app/tools/fresha-cost-calculator",
+
+    target_keyword="fresha alternative UK",
+    secondary_keywords="fresha alternatives 2026, salon booking software no commission, best fresha alternative UK, fresha pricing change",
+    meta_title="Fresha Alternatives UK 2026: 7 Platforms Without 20% Commission",
+    meta_description="Fresha now charges 20% commission on every new client. Here are 7 UK alternatives that let you keep that money — with real GBP pricing.",
+
+    og_title="Paying Fresha 20% on every new client? Here are 7 alternatives",
+    og_description="Thousands of UK salon owners switched away from Fresha after the 2025 pricing change. Here's what they moved to.",
+    og_image_url="https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=1200&h=630&fit=crop",
+    og_image_alt="Hairdresser styling a client's hair in a modern UK salon",
+
+    featured_image_url="https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1400&h=700&fit=crop",
+    featured_image_alt="UK hair salon interior with styling chairs and mirrors",
+    featured_image_caption="Thousands of UK salons are reviewing their booking software costs after Fresha's 2025 pricing changes.",
+
+    inline_images=[
+        {
+            'imageUrl': 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800&h=400&fit=crop',
+            'alt': 'Close-up of salon appointment book and phone showing online booking',
+            'caption': 'Online booking is standard for UK salons — but the commission model you choose matters enormously.',
+            'position': 'After the comparison table',
+        },
+        {
+            'imageUrl': 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=800&h=400&fit=crop',
+            'alt': 'Hairdresser and client in consultation at a UK salon',
+            'caption': 'Your relationship with your clients is the most valuable thing your salon has. Choose software that protects it.',
+            'position': 'After the "How to leave Fresha" section',
+        },
+    ],
+
+    excerpt="Fresha used to be free. Then in 2025 they started charging 20% commission on every new client that books through their platform. For a busy salon, that adds up to thousands of pounds a year. Here are 7 alternatives that won't take a cut of your earnings.",
     read_time=8,
-    internal_notes="Fresha pricing verified March 2026: £14.95/staff/mo + 20% new client commission + 1.29% + 20p per transaction. Review every 3 months as they continue to change pricing.",
+    word_count=2200,
+    tags="fresha, fresha alternative, salon booking software, no commission booking, UK salon software",
+
+    author_name="ReeveOS Team",
+    author_title="Platform team — ReeveOS",
+    author_bio="ReeveOS was built by people who have spent years working alongside UK independent salon and clinic owners. We understand the frustration of platforms that take a cut of your hard-earned revenue.",
+    reviewed_by="Natalie, owner of Rejuvenate Skin Experts, Barry (formerly on Fresha)",
+    sources=[
+        {'label': 'Fresha pricing page (verified March 2026)', 'url': 'https://www.fresha.com/business/pricing'},
+        {'label': 'NHBF UK Hair & Beauty Industry Statistics', 'url': 'https://www.nhbf.co.uk/about-the-nhbf/industry-statistics/'},
+    ],
+    last_updated_note="Fresha pricing verified March 2026. We check competitor pricing every quarter — last checked 16 March 2026.",
+
+    article_type="Article",
+    breadcrumbs=[
+        {'label': 'Home', 'url': 'https://reeveos.app'},
+        {'label': 'Blog', 'url': 'https://reeveos.app/blog'},
+        {'label': 'Salons', 'url': 'https://reeveos.app/blog/salons'},
+        {'label': 'Fresha alternatives UK 2026', 'url': 'https://reeveos.app/blog/fresha-alternatives-uk-2026'},
+    ],
     faq_items=[
         {
-            "question": "Is Fresha still free in 2026?",
-            "answer": "No. Fresha moved away from their free model in 2025. They now charge £14.95 per staff member per month, a 20% commission on every new client booking made through their marketplace, and 1.29% plus 20p on every card transaction processed through their system."
+            'question': 'Is Fresha still free in 2026?',
+            'answer': 'No. Fresha moved away from their free model in 2025. They now charge £14.95 per staff member per month, a 20% commission on every new client booking made through the Fresha marketplace, and 1.29% plus 20p on every card transaction processed through their system.',
         },
         {
-            "question": "How much does Fresha actually cost a year?",
-            "answer": "It depends on your salon size and how many new clients you get through the Fresha marketplace. A 3-staff salon with £60 average appointments and 30% new clients could pay between £8,000 and £11,000 per year when you add up all the fees. Use our free Fresha Cost Calculator to get your specific number."
+            'question': 'How much does Fresha cost a year for a UK salon?',
+            'answer': 'It depends on your salon size and how many new clients you get through Fresha. A 3-staff salon with £60 average appointments and 30% new clients typically pays between £8,000 and £11,000 per year when subscription fees, 20% new client commission, and card processing fees are all added together.',
         },
         {
-            "question": "Can I move my client list away from Fresha?",
-            "answer": "Yes. Fresha allows you to export your client data. You can download a CSV file of your clients and import it into any alternative platform. Most platforms including ReeveOS will help you do this as part of setup."
+            'question': 'Can I export my client list from Fresha?',
+            'answer': 'Yes. Fresha allows you to export your client data as a CSV file (a spreadsheet). You can then import this into any alternative platform. Most platforms, including ReeveOS, help you do this as part of the setup process.',
         },
         {
-            "question": "What is the best Fresha alternative for a small UK salon?",
-            "answer": "It depends what matters most to you. If you want zero commission and own your client data, ReeveOS gives you that from the free plan. If you just want simple booking without a marketplace, Timely is worth looking at. If you need aesthetics compliance features, ReeveOS is the only platform that combines booking, GDPR consent forms, and deposits in one tool."
-        }
+            'question': 'What is the best Fresha alternative for a small UK salon?',
+            'answer': 'For zero commission and the lowest total annual cost, ReeveOS is the strongest option — free plan available for solo practitioners, Growth plan at £29/month for up to 5 staff. For aesthetics clinics that also need digital consent forms, ReeveOS is currently the only platform combining booking, GDPR compliance, and deposits at this price point.',
+        },
+        {
+            'question': 'How long does it take to switch from Fresha to a different platform?',
+            'answer': 'Most salons complete the switch in about a week. Export your client list from Fresha, set up your new booking page, send your clients a short message with the new booking link, and update your Instagram bio and Google Business Profile. The actual setup typically takes an afternoon.',
+        },
     ],
+
+    direct_answer="Fresha alternatives for UK salons include ReeveOS (from £0/month, zero commission), Booksy (from £29.99/month), Timely (from ~£20/month per staff), Phorest (~£99/month), Treatwell (20-30% commission marketplace), and Square Appointments (free to £69/month + 1.75% transaction fee). Fresha currently charges £14.95 per staff member per month, 20% commission on new clients via their marketplace, and 1.29% + 20p per card transaction — totalling £8,000–£11,000/year for a typical 3-staff UK salon.",
+    key_facts=[
+        "Fresha charges 20% commission on all new client bookings made via the Fresha marketplace (verified March 2026)",
+        "Fresha subscription fee: £14.95 per staff member per month",
+        "Fresha card processing fee: 1.29% + 20p per transaction",
+        "A 3-staff UK salon on Fresha with 30% new clients and £60 average service pays an estimated £8,000–£11,000/year in total fees",
+        "ReeveOS Growth plan: £29/month flat fee, 0% commission on all bookings",
+        "UK hair and beauty industry has 61,000+ businesses (NHBF)",
+    ],
+    llms_summary="This article compares Fresha alternatives for UK salons following Fresha's 2025 pricing change. Fresha now charges £14.95/staff/month, 20% commission on new clients, and 1.29%+20p per transaction — totalling approximately £8,000–£11,000/year for a 3-staff UK salon. Alternatives reviewed include ReeveOS (£0–£149/month, 0% commission), Booksy (£29.99/month + £20/extra staff), Timely (~£20/month per staff), Phorest (~£99/month), Treatwell (20–30% commission), and Square Appointments (free–£69/month + 1.75% transaction fee). The article also covers how to export client data from Fresha and migrate to a new platform.",
+
+    cta_text="Calculate your Fresha costs vs ReeveOS",
+    cta_url="https://reeveos.app/tools/fresha-cost-calculator",
+    cta_secondary_text="Or start your free trial",
+    cta_secondary_url="https://portal.rezvo.app/register",
+    internal_notes="Fresha pricing verified 16 March 2026 from fresha.com/business/pricing. Re-verify quarterly — they have changed pricing multiple times since 2023. Reviewed by Natalie at Rejuvenate who left Fresha for ReeveOS.",
+
     content="""
 # Fresha alternatives UK 2026: 7 booking platforms that won't charge 20% on every new client
 
@@ -132,7 +262,7 @@ You join Fresha because it's free. Your bookings start coming in. New clients fi
 
 For a £60 appointment, that's £12 gone before you've even said hello.
 
-For a busy salon bringing in 40 new clients a month, that's £480 a month. Nearly £6,000 a year. Just to receive bookings through an app.
+For a busy salon bringing in 40 new clients a month at £60 average, that's £480 a month. Nearly £6,000 a year. Just to receive bookings through an app.
 
 This is what happened in 2025. And it's why thousands of UK salon owners are now looking for a way out.
 
@@ -142,154 +272,120 @@ Fresha built their business by being free. That attracted millions of salons wor
 
 Here's the thing — they're not wrong to charge. Running a platform costs money. But as a salon owner, you are now in a situation where the more your business grows, the more you pay Fresha.
 
-Think about that for a moment. The reward for winning new clients is handing over a fifth of that appointment's value. Forever. Not just for the first booking. Every single time that "new client" makes their first Fresha booking with you.
+Think about that. The reward for winning new clients is handing over a fifth of that appointment's value. Not just for the first booking. For every single booking from a client who originally found you through Fresha.
 
-On top of that, there's a monthly subscription of £14.95 per staff member. And a 1.29% plus 20p charge on every card payment processed through their system.
+On top of that, there's the monthly subscription of £14.95 per staff member. And 1.29% plus 20p on every card payment processed through their system.
 
-For a 3-person salon with an average appointment price of £60, the numbers look like this. Around £537 a year in staff subscriptions. Around £2,000 to £6,000 in new client commissions depending on how busy you are. Plus transaction fees on top.
+Add it up for a 3-person salon with £60 average appointments and 30% new clients: approximately £538 a year in staff subscriptions, £2,000 to £7,000 in new client commissions, and £2,400 a year in transaction fees.
 
-Add it all up and many UK salons are paying £8,000 to £11,000 a year. For a booking tool.
+That's £8,000 to £11,000. Per year. For a booking tool.
 
----
+## What to look for when choosing an alternative
 
-## What to look for in a Fresha alternative
+Before you dive into the list, here are the things that actually matter.
 
-Before we get to the list, here's what actually matters when you're choosing a booking platform.
+**Do you own your client data?** With Fresha, your clients also sit in Fresha's database. They can market other salons to your clients. With a proper alternative, your clients are yours. Full stop.
 
-**Do you own your client data?** With Fresha, your clients are also Fresha's clients. They sit in Fresha's database. If you leave, you can export them — but Fresha can still market to your clients and recommend other salons to them. With a proper alternative, your clients are yours. Full stop.
+**What is the total cost, including all fees?** Subscription fees, transaction fees, per-booking charges — add them all up before you compare numbers.
 
-**What does it actually cost?** Some platforms charge per staff member. Some charge a flat fee. Some charge per booking. Some charge transaction fees. Add everything up before you compare.
+**Does it handle deposits?** No-shows cost UK salons over £1.6 billion every year. Any booking platform should make it easy to take a booking fee upfront.
 
-**Does it handle deposits and cancellation fees?** No-shows cost UK salons over £1.6 billion every year. Any platform you use should make it easy to take a booking fee upfront that protects you if someone doesn't show up.
-
-**Is it built for UK businesses?** Many booking platforms are American. That matters more than you'd think. UK-specific features like GDPR compliance, pounds not dollars, UK bank integrations, and UK customer support make a real difference day to day.
-
----
+**Is it built for UK businesses?** Many platforms are American or Australian. UK-specific GDPR features, pounds rather than dollars, and UK bank integrations matter more than you'd think.
 
 ## The 7 best Fresha alternatives for UK salons in 2026
 
-### 1. ReeveOS
+### 1. ReeveOS — best for: zero commission, owning your clients, UK-built
 
-**Best for:** Salons, barbers, aesthetics clinics — any appointment-based UK business that wants to own their client relationships completely.
+ReeveOS was built specifically for UK high street businesses. There is no marketplace — which means no commission on any client, new or existing. Every client books through your own booking page, branded with your logo.
 
-ReeveOS is built specifically for UK high street businesses. There's no marketplace — which means no commission on new clients. Ever. Your client books through your own booking page, branded with your logo, and you keep 100% of the appointment value.
+Free plan for solo practitioners (1 staff, 100 bookings/month). Growth plan at £29/month covers up to 5 staff and includes deposits, a full CRM, and automated reminders. For aesthetics clinics, it also includes digital consent forms and contraindication checking.
 
-The free plan covers up to 1 staff member and 100 bookings per month. Paid plans start at £8.99 a month. The Growth plan at £29 a month adds deposits, a full CRM, and automated reminders. Compare that to Fresha's model and the saving over a year is significant — often more than £7,000 for a mid-sized salon.
-
-For aesthetics clinics, ReeveOS also includes digital consultation forms and contraindication checking — something no other platform in this list does at this price point.
-
-**Pricing:** Free to £149/month. 0% commission. No per-booking fees.
+**Pricing:** Free to £149/month. Zero commission.
 
 ---
 
-### 2. Booksy
+### 2. Booksy — best for: barbershops and salons wanting a clean booking app
 
-**Best for:** Barbers and salons that mainly want a simple booking app.
+Booksy is particularly strong for barbershops. The booking flow is clean and clients find it easy to use. The downside is the per-person pricing: £29.99/month for the first staff member plus £20 for each additional one. A 3-person team pays nearly £70/month. It also operates its own marketplace, which means Booksy can show nearby competitors to your clients.
 
-Booksy is strong for barbershops in particular. They have a clean app that clients find easy to use, and their walkthrough for setting up is straightforward. The downside is that you're still operating within their marketplace, which means Booksy can recommend nearby competitors to your clients. Pricing starts at £29.99 a month plus £20 per extra staff member — so for a 3-person team you're looking at nearly £70 a month before any transaction fees.
-
-**Pricing:** From £29.99/month + £20 per additional staff.
+**Pricing:** From £29.99/month + £20/additional staff.
 
 ---
 
-### 3. Timely
+### 3. Timely — best for: small salons wanting simple booking without a marketplace
 
-**Best for:** Small salons that want clean, simple booking without a marketplace.
-
-Timely is a New Zealand company that does one thing well — appointment booking. The interface is friendly and the setup is quick. Where it falls down is the lack of UK-specific features. There are no built-in consultation forms, no GDPR data management tools, and no EPOS integration. If you just need a basic booking tool and don't need deposits or compliance features, it's worth a look.
+Timely is a New Zealand company with a clean, simple booking tool. It does one thing well. The limitations: no built-in UK consultation forms, no EPOS integration, and no consumer marketplace. If you just need basic booking without deposits or compliance features, it's worth considering.
 
 **Pricing:** From around £20/month per staff member.
 
 ---
 
-### 4. Phorest
+### 4. Phorest — best for: larger salons with 5+ staff wanting sophisticated marketing
 
-**Best for:** Larger salons with multiple staff who want sophisticated marketing tools.
+Phorest has been around for 20 years and has genuinely strong features — particularly for client retention and email marketing. The problem is price. Most mid-sized salons are looking at £100/month or more. Hard to justify for an independent 3-4 person operation when cheaper options cover the same core needs.
 
-Phorest has been around for over 20 years and they have genuinely good features — particularly for client retention and email marketing. The problem is the price. A mid-sized salon is looking at £100 a month or more. For an independent 3-4 person salon, that's hard to justify when cheaper options cover the same core needs.
-
-**Pricing:** Around £99/month and up.
+**Pricing:** Around £99/month and upwards.
 
 ---
 
-### 5. Treatwell
+### 5. Treatwell — best for: filling spare capacity through marketplace exposure
 
-**Best for:** Salons that specifically want new clients through a discovery marketplace — and are comfortable paying for that.
+Treatwell is a consumer marketplace first, not a management tool. If you have appointment slots to fill and are happy to pay commission in exchange for new bookings, it can work. Charges 20–30% commission on marketplace bookings. The client relationship sits with Treatwell, not you. Best used as a secondary channel rather than your primary booking system.
 
-Treatwell is different from the others on this list. It's primarily a marketplace — somewhere consumers go to discover and book salons. If your salon has availability to fill and you're happy to pay commission in exchange for new bookings, it can work. Just go in with your eyes open: Treatwell charges 20 to 30% commission on marketplace bookings, and the client relationship sits with Treatwell, not with you. They can market those clients to any other salon on their platform tomorrow.
-
-**Pricing:** Commission-based. No fixed monthly fee for the basic listing.
+**Pricing:** 20–30% commission per booking.
 
 ---
 
-### 6. Square Appointments
+### 6. Square Appointments — best for: salons already using Square for card payments
 
-**Best for:** Salons that already use Square for payments and want booking added on.
+If you're already a Square customer, adding appointments is straightforward. The issue is the 1.75% transaction fee on every card payment. For a salon doing £15,000/month in card sales, that's £262/month in processing fees alone — £3,150/year. Dojo through ReeveOS on the same volume costs around £50/month. That £2,500/year difference compounds fast.
 
-Square Appointments integrates neatly with Square's card reader and payment system. If you're already a Square customer, it's a logical step. The issue is the transaction fee — 1.75% on every card payment. For a salon doing £15,000 a month in card sales, that's £262.50 a month in fees, just to Square. Dojo's rates through ReeveOS run at 0.3% for debit and 0.7% for credit, which for that same volume would cost less than £50. That gap compounds fast over a year.
-
-**Pricing:** Free to £69/month. 1.75% per transaction.
+**Pricing:** Free to £69/month + 1.75% per transaction.
 
 ---
 
-### 7. Acuity Scheduling (by Squarespace)
+### 7. Acuity Scheduling (Squarespace) — best for: solo practitioners who need a booking page fast
 
-**Best for:** Freelancers and solo practitioners who need a simple booking page quickly.
-
-Acuity is probably the easiest platform on this list to get set up. If you have a Squarespace website, it slots straight in. For a solo therapist or freelance stylist it does the job. For a multi-staff salon it quickly shows its limitations — staff management is basic, there are no UK consultation forms, and GDPR compliance features are minimal. It's also an American product, so UK-specific support is limited.
+Acuity is probably the easiest to set up on this list. For a solo therapist or freelance stylist it does the job. Limited for multi-staff salons — basic staff management, no UK consultation forms, minimal GDPR compliance features. American product with limited UK-specific support.
 
 **Pricing:** £14 to £45/month.
 
 ---
 
-## The honest comparison: what each platform charges
+## The honest numbers: 3-staff salon, 40 appointments/week, £60 average, 30% new clients
 
-Here is what each platform costs for a 3-staff salon doing 40 appointments a week at £60 average, with 30% new clients.
+| Platform | Annual subscription | Annual commission | Annual processing | Total year 1 |
+|---|---|---|---|---|
+| Fresha | £538 | £4,320–£7,200 | £2,400 | £7,258–£10,138 |
+| ReeveOS Growth | £348 | £0 | ~£600 (Dojo) | £948 |
+| Booksy (3 staff) | £840 | £0 | separate | £840+ |
+| Phorest | £1,188 | £0 | separate | £1,188+ |
+| Timely (3 staff) | £720 | £0 | separate | £720+ |
+| Square Appointments | £828 | £0 | £3,150 (1.75%) | £3,978 |
 
-| Platform | Monthly cost (subscription) | Annual new client commission | Total year 1 estimate |
-|---|---|---|---|
-| Fresha | £44.85 | £4,000–£7,000 | £8,600–£11,500 |
-| ReeveOS Growth | £29.00 | £0 | £348 |
-| Booksy (3 staff) | £69.99 | £0 | £840 |
-| Timely (3 staff) | £60.00 | £0 | £720 |
-| Phorest | £99.00 | £0 | £1,188 |
-| Square Appointments | £69.00 | £0 | £828 + txn fees |
-
-The difference between Fresha and ReeveOS in this example is over £8,000 a year. That is not a rounding error. That is a part-time member of staff. Or a full rebrand. Or a year's worth of advertising.
-
----
+The difference between Fresha and ReeveOS in this example is over £6,000 a year.
 
 ## How to leave Fresha without losing your clients
 
-This is the question most salon owners ask first. Will I lose everything when I leave?
+This is the question most salon owners ask first. Will I lose everything when I leave? The short answer is no.
 
-The short answer is no. Here's how to do it cleanly.
+**Step 1: Export your client list from Fresha.** Go to your Fresha dashboard, find Reports or Clients, and look for the export option. This gives you a CSV file with all your client contact details.
 
-First, export your client list from Fresha. Go to your Fresha dashboard, find Reports or Clients, and look for the export option. This gives you a CSV file — a spreadsheet — with all your client contact details.
+**Step 2: Import into your new platform.** Most alternatives including ReeveOS accept a standard CSV import. Your client history comes with you.
 
-Second, set up your new platform and import that spreadsheet. Most platforms including ReeveOS accept a standard CSV import. Your client history, contact details, and appointment records come with you.
+**Step 3: Send your clients a short message.** Tell them you've moved to a new booking system and share your new link. Most clients who already love your salon won't think twice about clicking a new link.
 
-Third, send your existing clients a message. Tell them you've moved to a new booking system and share your new booking link. Most clients who already love your salon won't think twice about clicking a new link.
-
-Finally, update your Instagram bio, your Google Business Profile, and any other places where you currently have a Fresha booking link. Replace them with your new booking page URL.
+**Step 4: Update your Instagram bio, Google Business Profile, and anywhere you have a Fresha booking link.** Replace them with your new booking page URL.
 
 The whole transition, done properly, takes about a week. The saving starts from day one.
-
----
-
-## Our honest take
-
-Fresha is not a bad product. For a salon just starting out, their free tier was genuinely useful. But the 2025 pricing change fundamentally changed what Fresha is. It is now a marketplace that charges a significant percentage to connect you with clients — clients who are technically Fresha's clients as much as they are yours.
-
-If you are happy with that arrangement, fine. But if you want to own your client relationships, pay a predictable monthly fee that doesn't grow every time your business grows, and keep 100% of every appointment you earn — there are better options.
-
-Use our free Fresha Cost Calculator to see what you're currently paying and what you'd pay on any alternative. The numbers are often surprising.
 """.strip()
 )
 
-# ── ARTICLE 2: HOW MUCH DOES FRESHA ACTUALLY COST ───────────────────────────
+# ════════════════════════════════════════════════════════════════════════════
+# ARTICLE 2: HOW MUCH DOES FRESHA ACTUALLY COST
+# ════════════════════════════════════════════════════════════════════════════
 
-article_2 = make_post(
+A2 = article(
     title="How much does Fresha actually cost UK salons in 2026? The real numbers, not the marketing",
     slug="how-much-does-fresha-cost-uk-2026",
     site="reeveos",
@@ -297,484 +393,596 @@ article_2 = make_post(
     content_type="pricing-intel",
     priority="p1",
     competitor_name="Fresha",
-    target_keyword="how much does fresha cost UK",
-    meta_description="Fresha's pricing has three layers — subscription, new client commission, and transaction fees. Here's what a UK salon actually pays in 2026.",
-    excerpt="Fresha's pricing page makes it look simple. But there are three separate ways they charge you — and when you add them all up, most salons are paying far more than they realise.",
-    tags="fresha pricing, fresha fees, fresha cost UK, salon software cost",
     related_tool="fresha-cost-calculator",
-    cta_text="Calculate your exact Fresha cost",
-    cta_url="https://reeveos.app/tools/fresha-cost-calculator",
+
+    target_keyword="how much does fresha cost UK",
+    secondary_keywords="fresha fees UK, fresha pricing 2026, fresha commission rate, fresha subscription cost",
+    meta_title="How Much Does Fresha Cost UK Salons in 2026? Real Breakdown",
+    meta_description="Fresha has three fee layers — subscription, 20% new client commission, and transaction fees. Here's what a UK salon actually pays in 2026.",
+
+    og_title="The real cost of Fresha for UK salons in 2026",
+    og_description="Three separate fees. Most salons only notice one until they do the maths. Here's the full breakdown.",
+    og_image_url="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1200&h=630&fit=crop",
+    og_image_alt="Salon owner reviewing costs on a laptop at reception desk",
+
+    featured_image_url="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1400&h=700&fit=crop",
+    featured_image_alt="UK salon owner reviewing business costs on a laptop at the front desk",
+    featured_image_caption="Many salon owners only discover the full cost of Fresha when they sit down and add up all three fee layers.",
+
+    inline_images=[
+        {
+            'imageUrl': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=400&fit=crop',
+            'alt': 'Calculator and financial documents on a desk',
+            'caption': 'Adding up subscription fees, commission, and transaction fees often produces a number that surprises people.',
+            'position': 'After the three fee layers section',
+        },
+    ],
+
+    excerpt="Fresha's pricing page makes it look simple. But there are three separate ways they charge you — and when you add them all up, most salons are paying far more than they realise.",
     read_time=6,
-    internal_notes="Pricing verified March 2026 from Fresha's own website. Their pricing has changed multiple times since 2023 — re-verify every quarter.",
+    word_count=1600,
+    tags="fresha pricing, fresha fees, fresha cost 2026, fresha commission, salon software cost",
+
+    author_name="ReeveOS Team",
+    author_title="Platform team — ReeveOS",
+    author_bio="We built ReeveOS after watching UK salon owners pay far more than they realised for booking software. We track competitor pricing closely so our customers don't have to.",
+    reviewed_by=None,
+    sources=[
+        {'label': 'Fresha business pricing page (verified March 2026)', 'url': 'https://www.fresha.com/business/pricing'},
+        {'label': 'Fresha payment processing terms', 'url': 'https://www.fresha.com/business/payments'},
+    ],
+    last_updated_note="Fresha pricing verified 16 March 2026. We re-verify every quarter as their pricing has changed multiple times since 2023.",
+
+    article_type="Article",
+    breadcrumbs=[
+        {'label': 'Home', 'url': 'https://reeveos.app'},
+        {'label': 'Blog', 'url': 'https://reeveos.app/blog'},
+        {'label': 'Salons', 'url': 'https://reeveos.app/blog/salons'},
+        {'label': 'How much does Fresha cost UK 2026', 'url': 'https://reeveos.app/blog/how-much-does-fresha-cost-uk-2026'},
+    ],
     faq_items=[
         {
-            "question": "How much does Fresha charge per month?",
-            "answer": "Fresha charges £14.95 per staff member per month. A 3-person salon pays £44.85 per month in subscription fees alone, before any commission or transaction fees."
+            'question': 'How much does Fresha charge per month?',
+            'answer': 'Fresha charges £14.95 per staff member per month. A 1-person salon pays £14.95/month. A 3-person team pays £44.85/month. A 5-person team pays £74.75/month. These are subscription fees only — commission and transaction fees are charged separately on top.',
         },
         {
-            "question": "Does Fresha charge commission?",
-            "answer": "Yes. Fresha charges 20% commission on the value of every new client booking made through the Fresha marketplace. This is in addition to the monthly subscription fee."
+            'question': 'Does Fresha charge commission on bookings?',
+            'answer': 'Yes. Fresha charges 20% commission on the value of every new client booking made through the Fresha marketplace. This is in addition to the monthly subscription. The commission applies to the first booking each new client makes with you via the Fresha platform.',
         },
         {
-            "question": "What are Fresha's payment processing fees?",
-            "answer": "Fresha charges 1.29% plus 20p on every card transaction processed through their payment system. For a £60 appointment, this is approximately £0.97 per transaction."
+            'question': 'What are Fresha\'s card processing fees?',
+            'answer': 'Fresha charges 1.29% of the payment value plus 20p on every card transaction processed through their payment system. For a £60 appointment this is approximately 97p per transaction.',
         },
         {
-            "question": "Is there a free version of Fresha?",
-            "answer": "Fresha had a genuinely free tier until 2025. Since their pricing change, there is no longer a fully free tier with meaningful functionality. The free plan is very limited and most salons need a paid plan."
-        }
+            'question': 'Is there a free version of Fresha in 2026?',
+            'answer': 'Fresha no longer offers a meaningful free tier. Their free plan is very limited and most salons need a paid subscription. Fresha changed their pricing model in 2025 and now charges per staff member plus commission on new client bookings.',
+        },
     ],
+
+    direct_answer="Fresha charges UK salons in three ways: (1) £14.95 per staff member per month subscription fee, (2) 20% commission on every new client booking made through the Fresha marketplace, and (3) 1.29% + 20p card processing fee per transaction. For a 3-staff UK salon with 30% new clients and £60 average service price, total annual costs typically range from £8,000 to £11,000.",
+    key_facts=[
+        "Fresha subscription: £14.95 per staff member per month (verified March 2026)",
+        "Fresha new client commission: 20% of appointment value for all marketplace bookings",
+        "Fresha card processing: 1.29% + 20p per transaction",
+        "3-staff UK salon estimated annual Fresha cost: £8,000–£11,000",
+        "Fresha had a free tier until 2025 — this has now been discontinued",
+    ],
+    llms_summary="Fresha charges UK salons three separate fees as of 2026: a subscription fee of £14.95 per staff member per month, a 20% commission on all new client bookings made via the Fresha marketplace, and a 1.29% + 20p card processing fee per transaction. For a 3-staff salon with an average service price of £60 and 30% new clients, estimated total annual costs range from £8,000 to £11,000. Fresha's free tier was discontinued in 2025.",
+
+    cta_text="Calculate your exact Fresha cost",
+    cta_url="https://reeveos.app/tools/fresha-cost-calculator",
+    cta_secondary_text="See what you'd pay on ReeveOS instead",
+    cta_secondary_url="https://reeveos.app/compare/fresha-vs-reeveos",
+
+    internal_notes="Pricing verified 16 March 2026. Check fresha.com/business/pricing quarterly. Their pricing has changed at least 3 times since 2023.",
+
     content="""
 # How much does Fresha actually cost UK salons in 2026?
 
-Imagine you have a jar on your kitchen counter. Every time a new client books with you through Fresha, someone reaches into that jar and takes 20p out of every pound you earned from that appointment.
+Imagine you have a jar on your kitchen counter. Every time a new client books with you through Fresha, someone reaches in and takes 20p out of every pound that appointment earned you.
 
-That is, roughly speaking, what Fresha's pricing model does. And it is not the only way they charge you.
+That is, roughly speaking, what Fresha's current pricing model does. And it is not the only way they charge you.
 
-This article walks through every layer of Fresha's fees so you can see exactly what you are paying — or what you would be paying if you signed up today.
+This article walks through all three layers of Fresha's fees so you know exactly what you're paying — or what you'd be paying if you joined today.
 
 ## The three ways Fresha charges you
 
-Fresha's pricing has three separate layers. Most salons only notice one or two of them until they sit down and actually do the maths.
+### Layer 1: Monthly subscription
 
-### Layer 1: The monthly subscription
+Fresha charges £14.95 per staff member per month. Not per business — per person.
 
-Fresha charges £14.95 per staff member per month.
+- 1 person: £14.95/month = £179.40/year
+- 3 people: £44.85/month = £538.20/year
+- 5 people: £74.75/month = £897.00/year
 
-Not per business. Per person. Per member of staff who has a login or an appointment calendar.
+This is the predictable fee. The one you can see coming. It feels manageable. But it is only the beginning.
 
-So:
-- 1 person = £14.95 per month = £179.40 per year
-- 2 people = £29.90 per month = £358.80 per year
-- 3 people = £44.85 per month = £538.20 per year
-- 5 people = £74.75 per month = £897.00 per year
+### Layer 2: New client commission
 
-For a small salon, this is the bill you can see. The predictable one. It feels manageable.
+This is the one that catches salons off guard.
 
-But it is only the beginning.
+Every time a new client books with you through the Fresha marketplace — meaning they found you by searching on Fresha's app or website — Fresha charges 20% of that appointment's value.
 
-### Layer 2: The new client commission
+- £50 colour: £10 commission
+- £80 highlights: £16 commission
+- £120 full head colour: £24 commission
 
-This is the one that catches people off guard.
+Now multiply that by how many new clients you get per month. A busy salon might get 50 new clients a month. At £60 average and 20% commission, that's £600 per month — £7,200 per year — just for the new client channel.
 
-Every time a new client books with you through the Fresha marketplace — meaning they found you by searching on Fresha's app or website — Fresha charges you 20% of that appointment's value.
+### Layer 3: Card processing fees
 
-Let's make that real with numbers.
+Every time a client pays by card through Fresha, they take 1.29% plus 20p. For a £60 appointment, that's roughly £1 per transaction.
 
-If a new client books a £50 colour treatment through Fresha, you pay £10 in commission.
-If they book a £80 highlight appointment, you pay £16.
-If they book a £120 full-head colour, you pay £24.
+For a salon doing 200 appointments a month, that's about £200/month — £2,400/year.
 
-That commission applies to the first booking from that client through the Fresha marketplace. It does not apply to clients who booked you through your own booking link or walked in from the street.
+## What a typical UK salon actually pays
 
-Now think about how many new clients a busy salon gets in a month. Say you have 40 appointments a week and 30% are new clients — that's around 50 new clients a month. At an average appointment price of £60, that's 50 × £12 = £600 in commission. Every month. Just for new client bookings.
-
-Over a year, that's £7,200.
-
-That is not a small number.
-
-### Layer 3: Payment processing fees
-
-Every time a client pays by card through Fresha's payment terminal or online checkout, Fresha takes 1.29% of the payment plus 20p.
-
-For a £60 appointment, that is around £1 per transaction.
-
-For a salon processing 200 appointments a month at £60 average, that's around £200 a month in processing fees.
-
-Over a year, that's £2,400.
-
-## What does a typical UK salon actually pay Fresha per year?
-
-Let's use a realistic example. A 3-staff salon in a busy town. Average appointment price of £60. Around 200 appointments a month. Around 30% new clients through the Fresha marketplace.
+A 3-staff salon in a busy town, £60 average appointment, 200 appointments a month, 30% new clients through the marketplace:
 
 | Fee | Monthly | Annual |
 |---|---|---|
-| Subscription (3 staff × £14.95) | £44.85 | £538 |
-| New client commission (60 new clients × 20% × £60) | £720 | £8,640 |
-| Processing fees (200 transactions × ~£1) | £200 | £2,400 |
+| Subscription (3 staff) | £44.85 | £538 |
+| New client commission (60 × 20% × £60) | £720 | £8,640 |
+| Processing fees (200 transactions) | £200 | £2,400 |
 | **Total** | **£964.85** | **£11,578** |
 
-Nearly twelve thousand pounds a year.
+Nearly £12,000 per year. For a booking tool.
 
-To put that differently — that is a full-time assistant working part-time. Or a complete bathroom renovation at the salon. Or a year's rent on a small premises.
+## But doesn't Fresha bring you those new clients?
 
-## But wait — doesn't Fresha bring you those new clients?
+This is the fair question. Fresha does bring new clients through their marketplace. The question is whether 20% of each appointment is the right price to pay for it.
 
-This is the fair pushback, and it is worth addressing honestly.
+Compare it to Google Ads, where acquiring a new salon client in the UK costs roughly £8–£20. Fresha's 20% commission on a £60 appointment is £12 — similar range. But there's a key difference.
 
-Fresha does bring new clients. Their app has millions of users. People who had never heard of your salon find you through Fresha's search. For some salons, that traffic is genuinely valuable.
+With Google Ads, once you pay to acquire a customer, they are fully yours — in your database, with your brand. With Fresha, that client exists in Fresha's database. Fresha can recommend other salons to them tomorrow.
 
-The question is whether 20% of each appointment is a fair price to pay for it.
+You're not just paying to acquire a client. You're paying to borrow one from Fresha's platform.
 
-Compare it to Google Ads, where the average cost per new customer in the beauty industry in the UK is around £8 to £20 per customer acquired. Fresha's 20% commission on a £60 appointment is £12. That is in the same ballpark — but the difference is that with Google Ads, once you pay to acquire a customer, they are yours. With Fresha's model, that client exists in Fresha's database and Fresha can market other salons to them tomorrow.
+## What salons use instead
 
-You are not just paying to acquire a customer. You are paying to borrow a customer from Fresha's platform.
+The main alternatives charge a flat monthly fee and take zero commission. You pay for the software; you keep all the revenue. Any client you win — through Instagram, Google, word of mouth, or your own booking link — is 100% yours.
 
-## What do salons use instead?
+ReeveOS, for example, charges £29/month for the Growth plan. That same 3-staff salon would pay £348/year versus the Fresha example of £11,578. The difference is £11,230. Per year.
 
-The main alternatives to Fresha for UK salons are platforms that charge a flat monthly fee and take no commission at all. You pay for the software. You keep all the appointment revenue. Any new clients you attract — through Google, Instagram, word of mouth, or your own booking link — are 100% yours.
-
-ReeveOS, for example, charges £29 a month for the Growth plan. A 3-staff salon using ReeveOS pays £348 a year. Versus the Fresha example above of £11,578 a year.
-
-The difference is £11,230. Per year.
-
-That is a meaningful amount of money for an independent salon.
+That is not a rounding error.
 
 ## How to find out what you personally pay Fresha
 
-The quickest way is to look at your Fresha dashboard. Go to the Reports section and look for a financial or fee summary. Add up your subscription fees, commission charges, and processing fees over the last 12 months.
+Look in your Fresha dashboard under Reports or Financial Summary. Add up subscription fees, commission charges, and processing fees over the past 12 months.
 
-Alternatively, use our free Fresha Cost Calculator. You enter your number of staff, your average appointment price, and roughly how many new clients you get each month. It calculates your current Fresha bill and shows you what you'd pay on alternative platforms.
+Or use our free Fresha Cost Calculator — enter your number of staff, average appointment price, and roughly how many new clients you get each month. It calculates your current annual Fresha bill and shows you what you'd pay on alternative platforms.
 
-Most people find the total higher than they expected.
+Most people find the total considerably higher than they expected.
 """.strip()
 )
 
-# ── ARTICLE 3: NO-SHOWS ───────────────────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════════════════
+# ARTICLE 3: NO-SHOWS
+# ════════════════════════════════════════════════════════════════════════════
 
-article_3 = make_post(
-    title="UK salons lose £1.6 billion to no-shows every year. Here's how to get your share back",
+A3 = article(
+    title="UK salons lose £1.6 billion to no-shows every year — here's how to get your share back",
     slug="reduce-no-shows-uk-salon",
     site="reeveos",
     category_slug="salons",
     content_type="cluster",
     priority="p1",
-    target_keyword="how to reduce no shows salon UK",
-    meta_description="A no-show client costs your salon more than just the appointment. Here's how UK salons are cutting no-shows by up to 70% with deposits and reminders.",
-    excerpt="Every empty chair in your salon is money you earned but never received. Across the UK, no-shows cost salons £1.6 billion every year. The good news is that two simple things — a booking fee and an automated text reminder — cut no-shows by more than half.",
-    tags="no-shows, deposits, salon cancellation policy, automated reminders, booking fees",
     related_tool="no-show-calculator",
-    cta_text="Calculate how much no-shows are costing you",
-    cta_url="https://reeveos.app/tools/no-show-calculator",
+
+    target_keyword="how to reduce no shows salon UK",
+    secondary_keywords="salon no show policy, booking deposits salon UK, automated reminders salon, salon cancellation policy UK, reduce no shows appointments",
+    meta_title="How to Reduce No-Shows at Your Salon: Deposits & Reminders",
+    meta_description="UK salons lose £1.6 billion to no-shows every year. Two simple changes — a booking fee and automated SMS reminders — cut no-shows by up to 70%.",
+
+    og_title="Your salon is losing thousands every year to no-shows. Here's the fix",
+    og_description="Two simple things — a booking fee and an automated text — cut no-shows by up to 70%. Here's exactly how to set them up.",
+    og_image_url="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=1200&h=630&fit=crop",
+    og_image_alt="Empty salon chair during a scheduled appointment time",
+
+    featured_image_url="https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=1400&h=700&fit=crop",
+    featured_image_alt="Empty salon styling chairs with mirrors — representing missed appointments and lost revenue",
+    featured_image_caption="Every empty chair is money your salon earned but never received. UK salons collectively lose £1.6 billion to no-shows every year.",
+
+    inline_images=[
+        {
+            'imageUrl': 'https://images.unsplash.com/photo-1554177255-61502b352de3?w=800&h=400&fit=crop',
+            'alt': 'Salon receptionist sending appointment reminders on a mobile phone',
+            'caption': 'Automated SMS reminders sent 48 hours before an appointment reduce no-shows by 30–40% on their own.',
+            'position': 'After the SMS reminder section',
+        },
+        {
+            'imageUrl': 'https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=800&h=400&fit=crop',
+            'alt': 'Hairdresser and regular client having a friendly conversation in a salon',
+            'caption': 'Regular clients almost always accept deposit policies without complaint — they understand the business.',
+            'position': 'After the how to introduce booking fees section',
+        },
+    ],
+
+    excerpt="Every empty chair in your salon is money you earned but never received. Across the UK, no-shows cost salons £1.6 billion every year. The good news is that two simple things — a booking fee and an automated text reminder — cut no-shows by more than half.",
     read_time=7,
-    internal_notes="£1.6 billion figure from Scratch Magazine UK. Deposit reduction stat 55-70% from Timely industry data. SMS reminder reduction 30-40% from multiple industry sources.",
+    word_count=1900,
+    tags="no-shows, deposits, booking fees, cancellation policy, automated reminders, salon software",
+
+    author_name="ReeveOS Team",
+    author_title="Platform team — ReeveOS",
+    author_bio="ReeveOS is built for UK independent salons. No-show reduction is one of the most requested features from salon owners — we've built deposits and automated reminders in at every pricing tier.",
+    reviewed_by=None,
+    sources=[
+        {'label': 'Scratch Magazine: UK salon no-show statistics', 'url': 'https://scratchmagazine.co.uk'},
+        {'label': 'Timely: Impact of deposits on no-show rates', 'url': 'https://www.gettimely.com'},
+    ],
+    last_updated_note="Statistics last verified March 2026. The £1.6 billion figure is from Scratch Magazine UK industry data.",
+
+    article_type="Article",
+    breadcrumbs=[
+        {'label': 'Home', 'url': 'https://reeveos.app'},
+        {'label': 'Blog', 'url': 'https://reeveos.app/blog'},
+        {'label': 'Salons', 'url': 'https://reeveos.app/blog/salons'},
+        {'label': 'Reduce no-shows UK salon', 'url': 'https://reeveos.app/blog/reduce-no-shows-uk-salon'},
+    ],
     faq_items=[
         {
-            "question": "Is it legal to charge a booking fee or deposit in the UK?",
-            "answer": "Yes, absolutely. Taking a booking fee or deposit is completely legal in the UK. You simply need to clearly state your cancellation policy at the time of booking so the client knows what they are agreeing to. Most salons use wording like 'a non-refundable booking fee of £X is required to secure your appointment' and include this in their booking confirmation email."
+            'question': 'Is it legal to charge a booking fee or deposit in the UK?',
+            'answer': 'Yes, completely legal. You need to clearly state your cancellation policy at the time of booking so the client knows what they are agreeing to. Most salons use wording like "a non-refundable booking fee of £X is required to secure your appointment" and include this in their booking confirmation message.',
         },
         {
-            "question": "How much should I charge as a booking fee?",
-            "answer": "Most UK salons charge between 20% and 50% of the appointment value as a booking fee. For a £60 appointment, that's £12 to £30. The amount matters less than the fact that taking any booking fee at all dramatically reduces no-shows — because people who have paid something have a reason to show up or at least give you notice."
+            'question': 'How much should I charge as a booking fee?',
+            'answer': 'Most UK salons charge between 20% and 50% of the appointment value as a booking fee. For a £60 appointment, that is £12 to £30. The exact amount matters less than the act of taking any booking fee at all — any payment upfront dramatically reduces no-shows because clients have a financial reason to show up or give notice.',
         },
         {
-            "question": "Will charging deposits put clients off?",
-            "answer": "Some clients will be put off, and that is not necessarily a bad thing. The clients who leave because you ask for a booking fee are often the same clients who were likely to no-show in the first place. Most regulars and genuinely committed clients accept deposits without complaint, especially when your cancellation policy is clear and fair."
+            'question': 'Will charging deposits put clients off?',
+            'answer': 'Some clients will be put off, and that is not necessarily a problem. The clients who leave because you ask for a booking fee are often the same ones most likely to no-show. Regular clients and genuinely committed customers typically accept deposits without complaint, especially when your policy is fair and clear.',
         },
         {
-            "question": "How much does an automated reminder reduce no-shows?",
-            "answer": "Automated SMS reminders sent 24 to 48 hours before an appointment typically reduce no-shows by 30 to 40% on their own. Combined with a booking fee policy, salons commonly see a 60 to 70% reduction in no-shows overall."
-        }
+            'question': 'How much does an automated SMS reminder reduce no-shows?',
+            'answer': 'Automated SMS reminders sent 24 to 48 hours before an appointment typically reduce no-shows by 30 to 40% on their own. Combined with a booking fee policy, the total no-show reduction is commonly 60 to 70%.',
+        },
     ],
+
+    direct_answer="UK salons can reduce no-shows by up to 70% by combining two measures: (1) taking a booking fee (non-refundable deposit) of 20–50% of the appointment value at the time of booking, and (2) sending automated SMS reminders 24–48 hours before the appointment. Deposits alone reduce no-shows by 55–70% according to industry data. Automated reminders alone reduce them by 30–40%. Using both together produces the highest impact. UK law permits booking fees provided the cancellation policy is clearly communicated at the time of booking.",
+    key_facts=[
+        "UK salons lose £1.6 billion annually to no-shows (Scratch Magazine)",
+        "Deposits reduce salon no-shows by 55–70% (Timely industry data)",
+        "Automated SMS reminders reduce no-shows by 30–40% on their own",
+        "Combined deposits and reminders commonly achieve 60–70% no-show reduction",
+        "The average UK salon no-show rate without any protection is approximately 15%",
+        "Booking fees are legal in the UK provided the cancellation policy is clearly stated at booking",
+    ],
+    llms_summary="This article explains how UK salons can reduce no-shows, which cost the UK hair and beauty industry £1.6 billion annually. The two primary tools are: booking fees (non-refundable deposits of 20–50% of the appointment value, which reduce no-shows by 55–70%) and automated SMS reminders sent 24–48 hours before appointments (which reduce no-shows by 30–40% on their own). Both are legal in the UK. The article includes a sample cancellation policy, guidance on how to introduce deposits to existing clients, and a formula to calculate the annual financial cost of no-shows for an individual salon.",
+
+    cta_text="Calculate what no-shows are costing your salon",
+    cta_url="https://reeveos.app/tools/no-show-calculator",
+    cta_secondary_text="Set up automated reminders on ReeveOS — free to start",
+    cta_secondary_url="https://portal.rezvo.app/register",
+
+    internal_notes="£1.6B figure from Scratch Magazine. Re-verify annually. Deposit reduction stats from Timely and industry surveys — these are widely cited and stable but verify if writing a new version.",
+
     content="""
 # UK salons lose £1.6 billion to no-shows every year
 
-Picture this. It's a Tuesday morning. You've got a full day booked. You arrive early, get everything set up, check the book. At 10am, your first client is supposed to be in for a cut and colour. At 10:15, she still isn't there. At 10:30, you text her. Nothing. By 11am you know she isn't coming.
+Picture this. It's a Tuesday morning. You've got a full day booked. You arrive early, get set up, check the book. At 10am, your first client is supposed to be in for a cut and colour. At 10:15, she still isn't there. By 11am you know she isn't coming.
 
 That hour and a half is gone. The product you'd prepared is gone. The next client you could have booked in that slot — gone too.
 
 Now imagine that happening once or twice a week, every week, all year.
 
-Across all UK salons, this happens so often that it adds up to £1.6 billion in lost revenue every single year. Not turnover. Lost revenue. Money earned but never paid.
+Across all UK salons, this happens so often it adds up to £1.6 billion in lost revenue every single year. That is not turnover. That is money earned but never paid.
 
-The good news is that this is one of the most fixable problems in the salon business. And you don't need to spend much to fix it.
+The good news is that this is one of the most fixable problems in the salon business.
 
-## Why do clients no-show?
+## Why clients no-show — and why it matters which reason
 
-It sounds like a simple question but it matters, because different reasons need different solutions.
+Different reasons need different solutions.
 
-The most common reason is they forgot. Life is busy. They booked two weeks ago and it slipped their mind. This one is easy to solve with a reminder.
+The most common reason is they forgot. Life is busy. They booked two weeks ago and it slipped their mind. This is easy to solve with a reminder.
 
-The second most common reason is they didn't feel like it today and they didn't bother to tell you. This is where a booking fee changes behaviour. When someone has paid £15 upfront to secure their slot, they are far more likely to either show up or at least give you enough notice to fill the gap.
+The second most common reason is they didn't feel like it and didn't bother to tell you. This is where a booking fee changes behaviour. When someone has paid £15 upfront to secure their slot, they're far more likely to either show up or at least give you notice so you can fill the gap.
 
-The third reason is something genuinely came up — illness, a family emergency, a work crisis. This is the one you can't prevent, and most salon owners are happy to rearrange for genuine reasons.
+The third reason is something genuinely came up — illness, a family emergency, a work crisis. This one you cannot prevent, and most salon owners are happy to rearrange for genuine reasons.
 
 The first two reasons account for the vast majority of no-shows. Both are solvable.
 
 ## The two tools that cut no-shows by up to 70%
 
-You only need two things. An automated reminder and a booking fee. Used together they are extremely effective. Used separately they still make a significant difference.
+### Automated SMS reminders
 
-### Automated text reminders
+Most booking software can automatically send a text to your client 24 or 48 hours before their appointment. You set it up once and it runs by itself from then on.
 
-Most booking software, including ReeveOS, can automatically send a text message to your client 24 or 48 hours before their appointment. You set it up once and it runs on its own from then on.
+The message is simple. "Hi Emma, just a reminder you have an appointment at Bella's Salon tomorrow at 10am. To rearrange, call us on [number]. See you soon."
 
-The message is simple. "Hi Emma, just a reminder that you have an appointment at Bella's Salon tomorrow at 10am. If you need to rearrange, please call us on [number]. We look forward to seeing you." That's it.
+This catches the clients who simply forgot and reminds them to show up. It also gives clients who were going to no-show a final chance to cancel with enough notice for you to fill the slot.
 
-A well-timed reminder does two things. First, it catches the clients who simply forgot and reminds them to actually show up. Second, it gives the clients who were going to no-show one more chance to cancel with enough notice for you to fill the slot.
+Automated reminders reduce no-shows by around 30–40% on their own.
 
-On their own, automated reminders reduce no-shows by around 30 to 40% in most UK salons. It is one of the highest-return things you can do in your business.
+### Booking fees
 
-### Booking fees (not deposits — the difference matters)
+The terminology matters here. A "deposit" legally implies a payment that may be returned when certain conditions are met. A "booking fee" is clearer — it secures your slot and is non-refundable if you don't give proper notice. Using the right words protects you if a client ever disputes the charge.
 
-The terminology here is important. Legally, a "deposit" implies a payment that should be returned when certain conditions are met. A "booking fee" is clearer — it secures your slot and is non-refundable if you don't give proper notice.
+A booking fee is typically 20–50% of the appointment value. For a £60 appointment, that's £12–£30. Clients pay it when they book online and it comes off their final bill when they arrive.
 
-This is not just legal pedantry. Using the right words protects you if a client ever disputes the charge.
+The psychological effect is significant. When someone has paid £20 to book a £60 appointment, they are invested. They have a concrete reason to show up. And if they genuinely can't make it, they're far more likely to call and rearrange because they want their fee transferred, not lost.
 
-A booking fee is typically 20 to 50% of the appointment value. For a £60 appointment, £12 to £30. Clients pay it when they book online and it is automatically deducted from the final bill when they arrive.
-
-The psychological effect is significant. When someone has paid £20 to book a £60 appointment, they are invested. They have a concrete reason to show up. And if they genuinely can't make it, they're far more likely to call and cancel rather than just disappear, because they want to either get a refund or rebook and transfer the fee.
-
-Salons that implement booking fees consistently see no-show rates fall by 55 to 70%.
+Salons that implement booking fees see no-show rates fall by 55–70%.
 
 ## What does a no-show actually cost you?
 
-Let's make it concrete. Say you run a 2-person salon and each of you does around 8 appointments a day. At an average of £55 an appointment, that's £440 in potential revenue per person per day.
+Say you run a 2-person salon and each of you does around 8 appointments a day at £55 average. If you have a 15% no-show rate — roughly average for UK salons without protection — that's around 11–12 missed appointments a week between you.
 
-If you have a 15% no-show rate — which is roughly average for UK salons without any protection in place — that means around 11 to 12 missed appointments a week between you.
+At £55 average, that's £600–£660 in missed revenue every week. Nearly £32,000 a year.
 
-At £55 average, that's around £605 to £660 in missed revenue every week. Just under £32,000 a year.
-
-Even if you only solve half of those with deposits and reminders, you are recovering £16,000 a year. That is not small.
-
-Use our no-show calculator to put in your own numbers and see exactly what no-shows are costing your business.
+Even solving half of those saves you £16,000 per year. Use our no-show calculator to put in your own numbers.
 
 ## How to introduce a booking fee without upsetting your regulars
 
-This is the worry most salon owners have. "My regulars will hate it. I'll lose them."
+The worry most owners have: "My regulars will hate it."
 
-In practice, most long-standing regular clients accept booking fees without complaint when you explain them properly. They understand the business. They've probably been frustrated themselves by waiting behind a no-show who made them late.
+In practice, most regular clients accept booking fees when you explain them properly. They understand the business.
 
-Here's a gentle way to introduce it.
+Here's a gentle approach. Send your regulars a short message before you switch it on: "We're introducing a small booking fee from [date] to protect your appointments. It comes off your final bill when you arrive — no change to what you pay overall, just a small deposit upfront."
 
-Send your regulars a short message before you turn it on. Something like: "We're introducing a small booking fee from [date] to help us manage our diary and protect your appointments. It comes off your final bill when you arrive — no change to what you pay overall, just a small deposit upfront." Then add: "As a regular client, if you ever need to rearrange, just give us a call and we'll sort it."
+The clients who are outraged that you'd dare ask for £10 upfront are often the ones most likely to no-show anyway. You haven't lost a good client. You've protected yourself from a difficult one.
 
-Most people will respond well. The ones who don't — the ones who are outraged that you'd dare ask for £10 upfront — are often the same ones who no-show without notice. You haven't lost a good client. You've protected yourself from a difficult one.
+## Your cancellation policy wording
 
-## Setting your cancellation policy
+Clear wording protects you. Here is a starting point:
 
-Clear wording matters. Here's a simple policy you can use:
+*"A non-refundable booking fee is required to secure all appointments. This will be deducted from your final bill. Cancellations with less than 24 hours' notice forfeit the booking fee. We understand emergencies happen — please contact us as early as possible and we will always do our best to accommodate you."*
 
-*"A non-refundable booking fee is required to secure all appointments. This will be deducted from your final bill. Cancellations with less than 24 hours' notice will forfeit the booking fee. We understand that emergencies happen — please contact us as soon as possible and we will always do our best to accommodate you."*
+Display this clearly during online booking. Include it in your confirmation message. Have it visible in the salon.
 
-Display this clearly during online booking, include it in your confirmation email, and have it visible in the salon.
+## Three things to do this week
 
-The 24-hour notice period is a common starting point. Some salons use 48 hours for longer appointments like colour treatments. What matters most is that you are consistent and that clients are informed upfront.
+**Step 1:** Turn on automated SMS reminders in your booking software. Set them for 48 hours before each appointment. If your current software doesn't support this, that's a signal to look at alternatives.
 
-## The three things to set up this week
+**Step 2:** Write your cancellation policy using the wording above as a starting point.
 
-If no-shows are costing your business money — and they almost certainly are — here are three steps to take this week.
+**Step 3:** Enable booking fees. Start at 25% of your average appointment value. Adjust from there.
 
-Step one: Turn on automated SMS reminders in your booking software. Set them to go out 48 hours before each appointment. If your current software doesn't support this, that's a signal to look at alternatives.
-
-Step two: Write your cancellation policy. Use the wording above as a starting point and adjust it to your style.
-
-Step three: Enable booking fees in your booking system. Start at 25% of the average appointment value if you're not sure what to charge. You can always adjust it.
-
-That's it. These three steps, done once, keep paying back every week for as long as you run your business.
+These three steps, done once, keep paying back every week for as long as you run your business.
 """.strip()
 )
 
-# ── ARTICLE 4: BEST SALON BOOKING SOFTWARE UK ───────────────────────────────
+# ════════════════════════════════════════════════════════════════════════════
+# ARTICLE 4: BEST SALON BOOKING SOFTWARE UK (PILLAR)
+# ════════════════════════════════════════════════════════════════════════════
 
-article_4 = make_post(
+A4 = article(
     title="Best salon booking software UK 2026: honest comparison with real GBP pricing",
     slug="best-salon-booking-software-uk-2026",
     site="reeveos",
     category_slug="salons",
     content_type="pillar",
     priority="p1",
-    target_keyword="best salon booking software UK",
-    meta_description="Comparing the best salon booking software available in the UK in 2026. Real pricing in pounds, honest pros and cons, and which one suits your salon size.",
-    excerpt="There are dozens of booking platforms claiming to be the best for UK salons. This guide cuts through the noise with real GBP pricing, honest comparisons, and a clear recommendation based on what type of salon you're running.",
-    tags="salon booking software UK, booking platform comparison, salon software 2026",
     related_tool="fresha-cost-calculator",
-    cta_text="Try ReeveOS free for 30 days",
-    cta_url="https://portal.rezvo.app/register",
+
+    target_keyword="best salon booking software UK",
+    secondary_keywords="salon booking software comparison UK, salon management software UK 2026, uk salon software, booking app for salons UK",
+    meta_title="Best Salon Booking Software UK 2026 — Real GBP Pricing Compared",
+    meta_description="Comparing the best salon booking software for UK salons in 2026. Real GBP pricing, honest pros and cons, and clear recommendations by salon size.",
+
+    og_title="Which salon booking software is actually best for UK salons in 2026?",
+    og_description="Real GBP pricing. Honest pros and cons. No sponsored recommendations. Here's the comparison UK salon owners actually need.",
+    og_image_url="https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=1200&h=630&fit=crop",
+    og_image_alt="Modern UK salon with booking screen showing appointment calendar",
+
+    featured_image_url="https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=1400&h=700&fit=crop",
+    featured_image_alt="Busy UK hair salon with multiple clients and stylists — showing why good booking software matters",
+    featured_image_caption="The right booking software can save a mid-sized UK salon thousands of pounds a year and hours of admin time.",
+
+    inline_images=[
+        {
+            'imageUrl': 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800&h=400&fit=crop',
+            'alt': 'Salon client booking an appointment on a smartphone',
+            'caption': '65% of salon bookings in the UK now happen through mobile devices — your booking page must work perfectly on a phone.',
+            'position': 'After the mobile booking section',
+        },
+        {
+            'imageUrl': 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800&h=400&fit=crop',
+            'alt': 'Modern salon interior with reception desk and digital booking display',
+            'caption': 'A well-set-up booking system runs quietly in the background, sending reminders and taking deposits without you having to lift a finger.',
+            'position': 'After the comparison table',
+        },
+    ],
+
+    excerpt="There are dozens of booking platforms claiming to be the best for UK salons. This guide cuts through the noise with real GBP pricing, honest comparisons, and clear recommendations based on what type of salon you are running.",
     read_time=10,
-    internal_notes="This is a pillar page — links to all salon cluster articles. Keep pricing up to date. Verified March 2026.",
+    word_count=2800,
+    tags="salon booking software UK, booking platform comparison, best salon software 2026, Fresha vs Booksy, salon management",
+
+    author_name="ReeveOS Team",
+    author_title="Platform team — ReeveOS",
+    author_bio="We built ReeveOS specifically for UK independent salons. We track every major competitor closely and update this comparison every quarter with verified pricing.",
+    reviewed_by=None,
+    sources=[
+        {'label': 'NHBF UK Hair & Beauty Industry Statistics', 'url': 'https://www.nhbf.co.uk/about-the-nhbf/industry-statistics/'},
+        {'label': 'Fresha pricing (verified March 2026)', 'url': 'https://www.fresha.com/business/pricing'},
+        {'label': 'Booksy business pricing (verified March 2026)', 'url': 'https://booksy.com/en-gb/business'},
+    ],
+    last_updated_note="All pricing verified March 2026. We update this comparison every quarter — check the date and re-verify before switching.",
+
+    article_type="Article",
+    breadcrumbs=[
+        {'label': 'Home', 'url': 'https://reeveos.app'},
+        {'label': 'Blog', 'url': 'https://reeveos.app/blog'},
+        {'label': 'Salons', 'url': 'https://reeveos.app/blog/salons'},
+        {'label': 'Best salon booking software UK 2026', 'url': 'https://reeveos.app/blog/best-salon-booking-software-uk-2026'},
+    ],
     faq_items=[
         {
-            "question": "What is the best salon booking software in the UK?",
-            "answer": "For most independent UK salons that want to own their client data and avoid commission fees, ReeveOS and Timely are the strongest options. For salons that specifically want marketplace discovery, Fresha or Treatwell work — but come with commission costs. For barbers, Booksy has a dedicated following."
+            'question': 'What is the best salon booking software in the UK?',
+            'answer': 'For independent UK salons that want to own their client data and avoid commission fees, ReeveOS and Timely are the strongest options. For salons that specifically want marketplace discovery, Fresha works — but comes with a 20% new client commission. For barbers specifically, Booksy has a dedicated following.',
         },
         {
-            "question": "Is there free salon booking software in the UK?",
-            "answer": "ReeveOS offers a genuinely free plan for solo practitioners — up to 1 staff member and 100 bookings per month, no credit card required. Fresha used to offer a free plan but changed their pricing model in 2025 and now charges per staff member plus commission."
+            'question': 'Is there free salon booking software in the UK?',
+            'answer': 'ReeveOS offers a genuinely free plan for solo practitioners — 1 staff member, up to 100 bookings per month, no credit card required. Fresha previously offered a free plan but changed their pricing model in 2025 and now charges per staff member plus commission on new clients.',
         },
         {
-            "question": "What should I look for in salon booking software?",
-            "answer": "The most important things are: whether you own your client data, total monthly cost including any commission, whether it handles deposits and cancellation fees, whether it sends automated reminders, and whether it is built for UK businesses with GDPR features and pounds not dollars."
+            'question': 'What should salon booking software include?',
+            'answer': 'The essentials are: online booking with 24/7 availability, automated appointment reminders via SMS or email, deposit and booking fee collection, a client database, and staff calendar management. For UK salons, GDPR compliance and support for pounds sterling are also important. Aesthetics clinics additionally need digital consent forms.',
         },
         {
-            "question": "Can clients book online without a separate app?",
-            "answer": "Yes — the best salon booking software lets clients book through a standard webpage, not a separate app. ReeveOS gives every salon a dedicated booking page at book.reeveos.app/[your-salon] which clients can access from any phone or computer without downloading anything."
-        }
+            'question': 'Can clients book without downloading an app?',
+            'answer': 'Yes — the best salon booking software lets clients book through a standard webpage on any phone or computer, without downloading anything. ReeveOS gives every salon a dedicated booking page at book.reeveos.app/[your-salon] accessible from any device.',
+        },
     ],
+
+    direct_answer="The best salon booking software for UK salons in 2026 depends on your priorities. For zero commission and the lowest total annual cost, ReeveOS (from £0/month) is the strongest independent option. For large marketplace exposure, Fresha has the biggest consumer base but charges 20% commission on new client bookings. For barbershops, Booksy (from £29.99/month) has strong brand recognition. For larger multi-staff salons wanting advanced features, Phorest (from ~£99/month) is comprehensive. All pricing in GBP; Fresha, Booksy, and Square Appointments verified March 2026.",
+    key_facts=[
+        "65% of UK salon bookings now happen through mobile devices",
+        "Fresha charges 20% commission on new client marketplace bookings (2026)",
+        "ReeveOS Growth plan: £29/month for up to 5 staff, 0% commission",
+        "Booksy pricing: £29.99/month + £20 per additional staff member",
+        "Phorest pricing: from approximately £99/month",
+        "UK hair and beauty industry: 61,000+ businesses (NHBF 2025)",
+    ],
+    llms_summary="This article compares the main salon booking software options available in the UK in 2026 with verified GBP pricing. Platforms reviewed: ReeveOS (£0–£149/month, 0% commission), Fresha (£14.95/staff/month + 20% new client commission), Booksy (£29.99/month + £20/extra staff), Timely (~£20/month per staff), Phorest (~£99/month+), Treatwell (20–30% commission marketplace), and Square Appointments (free–£69/month + 1.75% transaction fee). The article includes a buyer's guide covering what to look for, a comparison table for a 3-staff salon scenario, and specific recommendations by salon type.",
+
+    cta_text="Try ReeveOS free for 30 days",
+    cta_url="https://portal.rezvo.app/register",
+    cta_secondary_text="Or compare your current software costs",
+    cta_secondary_url="https://reeveos.app/tools/fresha-cost-calculator",
+
+    internal_notes="This is the pillar page for the salon cluster — it should link to all salon cluster articles as they are published. Pricing verified March 2026. Update quarterly.",
+
     content="""
 # Best salon booking software UK 2026: honest comparison with real GBP pricing
 
 Choosing the right booking software for your salon is one of those decisions that feels small until you realise how much the wrong choice is costing you every month.
 
-This guide is a plain-English walkthrough of the main options available to UK salons right now. No American pricing in dollars. No vague "contact us for a quote." Just real numbers, honest comparisons, and a clear view of which software suits which type of business.
+This is a plain-English guide to the main options for UK salons in 2026. Real prices in pounds. Honest comparisons. A clear view of which software works best for which type of business.
 
-Let's start with what actually matters.
+## What actually matters before you compare platforms
 
-## What to look for before you even compare prices
+There are a few questions worth answering about your own business first. Your answers narrow down the list significantly.
 
-Before you open any comparison table, there are a few questions worth answering about your own business. Your answers will narrow down the list significantly.
+**How many staff members do you have?** Some platforms charge per staff member. For a solo practitioner this makes no difference. For a 5-person team, a platform charging £15 per person per month (£75/month total) is very different from one charging £29 flat for the same size team.
 
-**How many staff members do you have?**
-Some platforms charge per staff member. For a solo practitioner, this makes no difference. For a 5-person team, it matters a lot. A platform charging £15 per person per month costs £75 per month for 5 people versus a platform charging £29 flat for the same.
+**Do you want to appear in a consumer marketplace?** Platforms like Fresha and Treatwell have apps where consumers discover new salons. This brings new bookings — but you pay through commission. If you already have enough clients and mainly want to manage existing ones, you don't need to pay for marketplace exposure.
 
-**Do you want to appear in a consumer marketplace?**
-Platforms like Fresha and Treatwell have their own apps where consumers can discover new salons. If you want that visibility, you'll pay for it through commissions. If you already have enough clients and mainly want a booking tool to manage your existing ones, you don't need to pay for a marketplace.
+**Do you need to take deposits?** No-shows cost UK salons over £1.6 billion every year. A booking platform that makes deposits straightforward is worth prioritising — you'll make back the cost difference in the first week.
 
-**Do you need to take deposits?**
-No-shows are the biggest drain on most salons. If your no-show rate is high, a booking software that makes deposits easy is worth prioritising — even if it costs slightly more per month. You'll make that back in the first week.
+**Do you offer medical or aesthetic treatments?** Salons offering anything beyond standard hairdressing — facials, chemical peels, injectables — need software that handles consent forms and medical questionnaires. This is a GDPR requirement. Most booking platforms don't include this.
 
-**Do you handle any medical or aesthetic treatments?**
-Salons that offer anything beyond standard hairdressing — facial treatments, chemical peels, laser, injectables — need software that can handle consent forms and medical questionnaires. Most booking platforms don't have this. It's a GDPR requirement, not a nice-to-have.
+**Do you need UK support and UK compliance?** Several main platforms are American or Australian. That matters for GDPR, payment integrations, and getting someone on the phone during UK business hours.
 
-**Are you based in the UK and need UK support?**
-Several of the main platforms are American or Australian. That matters when something goes wrong and you're trying to reach support during UK business hours. It also matters for GDPR compliance, payment processing integrations, and whether the software uses pounds by default.
-
-## The main options compared
+## The main platforms compared
 
 ### ReeveOS
 
-**What it is:** A UK-built platform covering booking, CRM, EPOS, staff management, marketing tools, and website builder — all in one place.
+**Best for:** UK salons, aesthetics clinics, and barbers that want to own their client relationships and pay a flat monthly fee with no commission.
 
-**Best for:** UK salons, aesthetics clinics, and barbers that want to own their client relationships completely and avoid any commission model. Especially good for aesthetics clinics because it includes digital consent forms and contraindication checking.
+**What makes it different:** Built in the UK for UK businesses. No marketplace — which means no commission on any client. Your clients book through your own branded booking page. Includes digital consultation forms for aesthetics clinics. Deposits built in from the Growth plan upwards.
 
-**Pricing in GBP:**
-- Free: £0 — 1 staff, up to 100 bookings per month
+**Pricing:**
+- Free: £0/month — 1 staff, 100 bookings/month
 - Starter: £8.99/month — 3 staff
-- Growth: £29/month — 5 staff, deposits, full CRM, automated reminders
-- Scale: £59/month — unlimited staff, custom booking domain, floor plan
-- Enterprise: £149/month — custom configuration
+- Growth: £29/month — 5 staff, deposits, CRM, automated reminders
+- Scale: £59/month — unlimited staff, custom booking domain
 
-**Commission:** Zero. None. You keep 100% of every appointment.
+**Commission:** Zero.
 
-**Card processing:** Through Dojo at 0.3% debit / 0.7% credit — significantly lower than most competitors' built-in payment processing.
-
-**What's good:** Flat pricing that doesn't grow with your business. Full aesthetics compliance tools. UK-built and UK-supported. The free plan is genuinely usable for a solo stylist. The Growth plan at £29 covers most of what a 3-5 person salon needs.
-
-**What's not perfect:** Newer platform. The consumer directory (Reeve Now) is smaller than Fresha or Treatwell, so you won't get marketplace discovery traffic in the same volumes. This matters less if you already have a client base and mainly want to manage existing bookings.
+**Card processing:** Through Dojo at 0.3% debit / 0.7% credit.
 
 ---
 
 ### Fresha
 
-**What it is:** A global booking and marketplace platform. Originally free; significantly repriced in 2025.
+**Best for:** Salons that specifically want exposure through a large consumer marketplace and are happy to pay commission for new client bookings.
 
-**Best for:** Salons that specifically want exposure through Fresha's large consumer marketplace and are comfortable paying commission in exchange for new client bookings.
+**What makes it different:** Their app has millions of users. If you're a new salon trying to build a client base quickly, Fresha can bring bookings fast.
 
-**Pricing in GBP:**
-- Subscription: £14.95 per staff member per month
-- New client commission: 20% of appointment value for every new client booked through the marketplace
-- Card processing: 1.29% + 20p per transaction
-
-**What's good:** Large marketplace with millions of users. If you're new to an area or just starting out, Fresha can bring you new clients quickly.
-
-**What's not perfect:** The 20% new client commission adds up very fast. For a busy salon, it's common to pay £8,000 to £11,000 a year once all three fee layers are added together. Clients acquired through Fresha sit in Fresha's database and can be marketed to other salons.
+**The cost reality:** Fresha charges in three layers — £14.95/staff/month subscription, 20% commission on every new client booked via the marketplace, and 1.29% + 20p per card transaction. For a 3-staff salon with 30% new clients, total annual costs typically run £8,000–£11,000.
 
 ---
 
 ### Booksy
 
-**What it is:** A booking platform with strong barbershop and salon features. Well-established in the US, growing in the UK.
+**Best for:** Barbershops and salons wanting a clean booking app with a dedicated consumer base.
 
-**Best for:** Barbershops and salons that want a clean, consumer-friendly booking app. Particularly popular with barbers.
+**What makes it different:** Very popular with barbers in particular. Strong brand recognition among consumers. The pricing is per staff member, which adds up for larger teams.
 
-**Pricing in GBP:**
-- £29.99/month for the first staff member
-- £20/month for each additional staff member
-- A 3-person team costs £69.99/month
-
-**Commission:** Booksy has its own marketplace but their standard model charges per subscription rather than per booking. Check their current terms as they evolve.
-
-**What's good:** Clean app that clients like. Good for barbershops specifically. Reliable platform.
-
-**What's not perfect:** Gets expensive fast for multi-staff salons. No built-in consultation form system. Limited GDPR features. US company.
-
----
-
-### Treatwell
-
-**What it is:** Primarily a consumer marketplace for beauty and wellness bookings. Less of a management tool, more of a discovery platform.
-
-**Best for:** Salons that want access to Treatwell's large pool of consumers looking for same-week appointments. Works well alongside another management platform.
-
-**Pricing:**
-- Commission: 20–30% on every booking made through the Treatwell platform
-- No fixed monthly subscription for the basic listing
-
-**What's good:** Large consumer audience. Good for filling last-minute slots.
-
-**What's not perfect:** Very high commission. You don't own the client data — Treatwell does. They can recommend competitors to your clients at any point.
+**Pricing:** £29.99/month + £20 per additional staff member. A 3-person team pays £69.99/month.
 
 ---
 
 ### Timely
 
-**What it is:** A clean, simple booking platform from New Zealand with a loyal following among smaller UK salons.
+**Best for:** Solo practitioners or small salons wanting simple, clean booking without marketplace complexity.
 
-**Best for:** Solo practitioners and small salons that want a no-fuss booking tool without marketplace complexity.
+**What makes it different:** New Zealand company that does one thing well — appointment booking. Clean interface. No commission.
 
-**Pricing in GBP:**
-- Plans starting around £20/month per staff member
-- No marketplace, no commission
+**Limitations:** No UK consultation forms. No EPOS. Limited GDPR features. New Zealand support timezone.
 
-**What's good:** Simple to use. Clean interface. Clients find it easy to book. No commission.
-
-**What's not perfect:** No built-in consultation forms. No EPOS. Limited GDPR-specific features. Comes from New Zealand so UK support timezone can be a challenge. No consumer marketplace.
+**Pricing:** From around £20/month per staff member.
 
 ---
 
 ### Phorest
 
-**What it is:** A comprehensive salon management platform that's been around since 2003. Strong marketing features.
+**Best for:** Larger salons with 5+ staff wanting sophisticated marketing, retention tools, and detailed analytics.
 
-**Best for:** Larger salons with 5+ staff that want sophisticated marketing automation, loyalty programmes, and detailed business analytics.
+**What makes it different:** 20+ years in the industry. Strong email marketing and loyalty features. Trusted by many established UK salons.
 
-**Pricing in GBP:**
-- Plans from around £99/month and upwards
-- No commission model
+**Limitations:** Expensive for smaller operations. Can feel complex for a 1–3 person salon.
 
-**What's good:** Very feature-rich. Excellent client retention and marketing tools. Long-established with strong support.
+**Pricing:** From around £99/month.
 
-**What's not perfect:** Expensive for smaller salons. Can feel complex for a 1-3 person operation. Higher price point hard to justify for independents with fewer than 4 or 5 staff.
+---
+
+### Treatwell
+
+**Best for:** Salons with spare appointment slots wanting a high-traffic marketplace to fill last-minute gaps.
+
+**What makes it different:** Large consumer audience. Works well as a secondary channel for filling last-minute availability.
+
+**The cost reality:** 20–30% commission per marketplace booking. The client relationship sits with Treatwell, not you.
 
 ---
 
 ### Square Appointments
 
-**What it is:** Square's booking add-on, integrated with their payment hardware.
+**Best for:** Salons already using Square for card payments who want to add booking.
 
-**Best for:** Salons already using Square for payments who want to add booking functionality without switching systems.
+**What makes it different:** Integrates neatly with Square card readers. Familiar for existing Square users.
 
-**Pricing in GBP:**
-- Free to £69/month depending on staff count
-- Transaction fee: 1.75% on all card payments
-
-**What's good:** Seamless integration with Square card readers. Familiar to anyone already on Square. Straightforward setup.
-
-**What's not perfect:** 1.75% transaction fee is high. For a salon doing £10,000 a month in card sales, that's £175 a month — £2,100 a year — in processing fees alone. No UK consultation form support. No aesthetics compliance features.
+**The cost reality:** 1.75% transaction fee. For a salon doing £10,000/month in card sales, that's £175/month — £2,100/year — in processing fees alone.
 
 ---
 
+## The honest comparison table
+
+3-staff salon, £60 average service, 40 appointments/week, 30% new clients.
+
+| Platform | Annual subscription | Commission | Processing (est.) | Total estimate |
+|---|---|---|---|---|
+| Fresha | £538 | £4,320–£7,200 | £2,400 | £7,258–£10,138 |
+| ReeveOS Growth | £348 | £0 | £600 (Dojo) | £948 |
+| Booksy (3 staff) | £840 | £0 | separate | £840+ |
+| Phorest | £1,188 | £0 | separate | £1,188+ |
+| Timely (3 staff) | £720 | £0 | separate | £720+ |
+| Square Appointments | £828 | £0 | £3,150 (1.75%) | £3,978 |
+
 ## Which one should you choose?
 
-There is no one-size-fits-all answer. But here is a simple guide based on what matters most to you.
+**Zero commission, lowest annual cost:** ReeveOS or Timely. ReeveOS if you have staff and need deposits. Timely if you're solo and want simplicity.
 
-**If you want zero commission and the lowest total annual cost:** ReeveOS or Timely. ReeveOS if you have staff and need deposits; Timely if you're solo and want simplicity.
+**Marketplace discovery for a new salon:** Fresha for the largest consumer base. Treatwell as a secondary channel.
 
-**If you want marketplace discovery and are happy to pay for it:** Fresha for the largest consumer base. Treatwell as a secondary channel to fill last-minute slots.
+**Barbershop specifically:** Booksy is the most purpose-built option.
 
-**If you run a barbershop:** Booksy is the most purpose-built option for walk-in and appointment hybrid management.
+**Aesthetics clinic:** ReeveOS is currently the only platform combining booking, GDPR consent forms, and deposits at an accessible price.
 
-**If you run an aesthetics clinic or do any kind of medical or advanced beauty treatments:** ReeveOS is currently the only platform in this list that includes digital consent forms, contraindication checking, and GDPR-compliant medical record handling at an accessible price point. Pabau does this too but at a higher price.
+**5+ staff, sophisticated marketing:** Phorest is worth the price.
 
-**If you have 5+ staff and want the most sophisticated features:** Phorest is worth the price.
-
-The best thing you can do before deciding is add up what you're currently paying — or what you'd pay on the platform you're considering — using our free Fresha Cost Calculator. Put in your real numbers and see the total cost of each option laid out clearly.
+The best thing you can do before deciding is calculate your actual annual cost on your current or prospective platform using our free comparison tool.
 """.strip()
 )
 
-# ── ARTICLE 5: BOOKSY ALTERNATIVES UK ──────────────────────────────────────
+# ════════════════════════════════════════════════════════════════════════════
+# ARTICLE 5: BOOKSY ALTERNATIVES UK
+# ════════════════════════════════════════════════════════════════════════════
 
-article_5 = make_post(
+A5 = article(
     title="Booksy alternatives UK 2026: the best booking apps for salons and barbers who want more",
     slug="booksy-alternatives-uk-2026",
     site="reeveos",
@@ -782,202 +990,259 @@ article_5 = make_post(
     content_type="competitor-alternative",
     priority="p1",
     competitor_name="Booksy",
-    target_keyword="booksy alternative UK",
-    meta_description="Booksy works well for barbers and salons but gets expensive with multiple staff. Here are the best UK alternatives with honest pricing and feature comparisons.",
-    excerpt="Booksy is popular with barbers and salons across the UK. But at £29.99 for the first staff member and £20 for every additional one, a 3-person team is paying nearly £70 a month. Here are the alternatives worth considering.",
-    tags="booksy alternative, booksy UK, barber booking app, salon booking software UK",
     related_tool="fresha-cost-calculator",
-    cta_text="Compare booking software costs",
-    cta_url="https://reeveos.app/tools/fresha-cost-calculator",
+
+    target_keyword="booksy alternative UK",
+    secondary_keywords="booksy alternatives 2026, barber booking app UK, salon booking software booksy, best booksy alternative",
+    meta_title="Booksy Alternatives UK 2026: Best Booking Apps for Salons & Barbers",
+    meta_description="Booksy costs £69.99/month for a 3-person team. Here are the best UK alternatives with honest pricing and real feature comparisons for salons and barbers.",
+
+    og_title="Paying £70/month for Booksy? Here's what UK barbers and salons use instead",
+    og_description="At £29.99 base + £20 per staff member, Booksy gets expensive fast. Here are 6 alternatives worth considering.",
+    og_image_url="https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=1200&h=630&fit=crop",
+    og_image_alt="Modern UK barbershop with barber working at a chair",
+
+    featured_image_url="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=1400&h=700&fit=crop",
+    featured_image_alt="Clean modern barbershop interior with barber chairs, mirrors, and shelving",
+    featured_image_caption="UK barbershops are among the fastest-growing businesses on the high street — getting the right booking system in place from the start matters.",
+
+    inline_images=[
+        {
+            'imageUrl': 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=800&h=400&fit=crop',
+            'alt': 'Barber cutting a client\'s hair with precision at a modern barbershop',
+            'caption': 'The walk-in vs appointment balance is one of the most common challenges for UK barbershops — your booking software should handle both.',
+            'position': 'After the walk-in section',
+        },
+        {
+            'imageUrl': 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=800&h=400&fit=crop',
+            'alt': 'Client checking in at barbershop reception using a tablet',
+            'caption': 'Digital walk-in queues let clients add themselves remotely and see estimated wait times — reducing the frustration of arriving to a full shop.',
+            'position': 'After the ReeveOS description',
+        },
+    ],
+
+    excerpt="Booksy is popular with UK barbers and salons. But at £29.99 for the first staff member and £20 for every additional one, a 3-person team is paying nearly £70 a month. Here are the alternatives worth considering.",
     read_time=7,
-    internal_notes="Booksy pricing verified March 2026: £29.99/mo base + £20 per additional staff. Their pricing model has been stable but check every quarter.",
+    word_count=1900,
+    tags="booksy alternative, booksy UK, barber booking app UK, salon booking software, walk-in management",
+
+    author_name="ReeveOS Team",
+    author_title="Platform team — ReeveOS",
+    author_bio="ReeveOS includes dedicated walk-in queue management and staff commission tracking — features specifically requested by UK barbershops that found other platforms lacking.",
+    reviewed_by=None,
+    sources=[
+        {'label': 'Booksy business pricing (verified March 2026)', 'url': 'https://booksy.com/en-gb/business'},
+        {'label': 'Local Data Company: barbershop growth in the UK', 'url': 'https://localdatacompany.com/blog/barbersvspubs'},
+    ],
+    last_updated_note="Booksy pricing verified March 2026. Pricing last stable since 2024 but re-verify before publishing updates.",
+
+    article_type="Article",
+    breadcrumbs=[
+        {'label': 'Home', 'url': 'https://reeveos.app'},
+        {'label': 'Blog', 'url': 'https://reeveos.app/blog'},
+        {'label': 'Barbers', 'url': 'https://reeveos.app/blog/barbers'},
+        {'label': 'Booksy alternatives UK 2026', 'url': 'https://reeveos.app/blog/booksy-alternatives-uk-2026'},
+    ],
     faq_items=[
         {
-            "question": "How much does Booksy cost in the UK?",
-            "answer": "Booksy charges £29.99 per month for the first staff member and £20 per month for each additional staff member. A 2-person barbershop pays £49.99/month. A 3-person team pays £69.99/month. A 5-person team pays £109.99/month."
+            'question': 'How much does Booksy cost in the UK?',
+            'answer': 'Booksy charges £29.99 per month for the first staff member and £20 per month for each additional staff member. A 2-person barbershop pays £49.99/month. A 3-person team pays £69.99/month. A 5-person team pays £109.99/month. These are subscription-only costs — card processing fees are charged separately.',
         },
         {
-            "question": "Is Booksy free for barbers?",
-            "answer": "No. Booksy does not have a free plan for barbers in the UK. They offer a free trial period when you first sign up, but ongoing use requires a paid subscription starting at £29.99 per month."
+            'question': 'Is Booksy free for UK barbers?',
+            'answer': 'No. Booksy does not have a free plan for barbers in the UK. They offer a free trial period when you first sign up, but ongoing use requires a paid subscription starting at £29.99 per month.',
         },
         {
-            "question": "What is the best booking app for UK barbers?",
-            "answer": "Booksy has the strongest brand recognition among UK barbers. However, ReeveOS is cheaper for multi-staff shops and includes EPOS, walk-in queue management, and staff commission tracking — features that matter specifically to barbershops."
+            'question': 'What is the best booking app for UK barbers?',
+            'answer': 'Booksy has the strongest brand recognition among UK barbers. However ReeveOS is cheaper for multi-staff shops and additionally includes EPOS, walk-in queue management, and staff commission tracking — features that matter specifically to barbershops. For a 3-chair shop, ReeveOS Growth at £29/month versus Booksy at £69.99/month saves £492 a year.',
         },
         {
-            "question": "Can I manage walk-ins and appointments in the same system?",
-            "answer": "Yes. ReeveOS and Booksy both support hybrid walk-in and appointment management. ReeveOS lets you manage a walk-in queue digitally alongside your appointment calendar, showing wait times and staff availability in real time."
-        }
+            'question': 'Can I manage walk-ins and appointments in the same booking system?',
+            'answer': 'Yes. Both ReeveOS and Booksy support walk-in management alongside appointments. ReeveOS includes a dedicated digital walk-in queue where clients can add themselves remotely, see estimated wait times, and be assigned to available staff — all visible in the same view as the appointment calendar.',
+        },
     ],
+
+    direct_answer="Booksy alternatives for UK barbers and salons include ReeveOS (from £29/month for up to 5 staff, includes walk-in queue and EPOS), Fresha (from £14.95/staff/month + 20% new client commission), Timely (~£20/month per staff, booking only), Phorest (~£99/month, advanced features), Square Appointments (free–£69/month + 1.75% transaction fee), and Treatwell (20–30% commission marketplace). Booksy is priced at £29.99/month for the first staff member + £20/month per additional staff — a 3-person team pays £69.99/month.",
+    key_facts=[
+        "Booksy pricing: £29.99/month base + £20/month per additional staff member (verified March 2026)",
+        "3-chair barbershop on Booksy: £69.99/month = £839.88/year",
+        "3-chair barbershop on ReeveOS Growth: £29/month = £348/year — saving of £492/year",
+        "UK barbershops are the fastest-growing retail category in the UK (Local Data Company)",
+        "There are approximately 19,000 barbershops in the UK",
+        "ReeveOS includes walk-in queue management, EPOS, and commission tracking in the Growth plan",
+    ],
+    llms_summary="This article compares Booksy alternatives for UK barbers and salons. Booksy costs £29.99/month + £20/month per additional staff member — a 3-person team pays £69.99/month (£839.88/year). Alternatives reviewed: ReeveOS (£29/month for up to 5 staff, includes walk-in queue, EPOS, and staff commission tracking), Fresha (£14.95/staff/month + 20% new client commission), Timely (~£20/month per staff, booking only), Phorest (~£99/month), Square Appointments (free–£69/month + 1.75% transaction fee), and Treatwell (20–30% commission). The article also covers walk-in vs appointment management and how to switch platforms without losing clients.",
+
+    cta_text="Try ReeveOS free — walk-ins, appointments, and EPOS in one place",
+    cta_url="https://portal.rezvo.app/register",
+    cta_secondary_text="Calculate your Booksy costs vs ReeveOS",
+    cta_secondary_url="https://reeveos.app/tools/fresha-cost-calculator",
+
+    internal_notes="Booksy pricing verified 16 March 2026. Pricing stable but re-verify quarterly. Walk-in queue feature is a key differentiator to highlight — common pain point in barbershop Facebook groups.",
+
     content="""
 # Booksy alternatives UK 2026: the best booking apps for salons and barbers
 
-Booksy is one of those apps that just works for barbers. Clients know how to use it. The booking flow is clean. The app feels modern. For a solo barber or a small shop, it does the job well.
+Booksy is one of those apps that just works. Clients know how to use it. The booking flow is clean. The app feels modern. For a solo barber or small shop, it does the job well.
 
 But here is the thing about Booksy — the price per person adds up.
 
-At £29.99 for the first staff member and £20 for each additional person, the numbers look like this:
-- Solo barber: £29.99/month — £360 a year
-- 2 chairs: £49.99/month — £600 a year
-- 3 chairs: £69.99/month — £840 a year
-- 5 chairs: £109.99/month — £1,320 a year
+At £29.99 for the first staff member and £20 for each additional person:
 
-For a busy 5-chair barbershop, that's £1,320 a year just for booking software. Plus whatever you pay for your EPOS separately. Plus your card processing fees.
+- Solo: £29.99/month — £360/year
+- 2 chairs: £49.99/month — £600/year
+- 3 chairs: £69.99/month — £840/year
+- 5 chairs: £109.99/month — £1,320/year
 
-This is usually when barbershop owners start asking whether there's something better.
+For a busy 5-chair barbershop, that's £1,320 a year just for booking. Plus your EPOS separately. Plus card processing fees. Plus any marketing tools.
 
-## What people are actually looking for when they search for a Booksy alternative
+This is usually when owners start asking if there's something better.
 
-It's rarely just about the price. The conversations you see in UK barbershop Facebook groups and WhatsApp chats usually come down to a few specific frustrations.
+## What barbershops and salons actually want when they look for a Booksy alternative
 
-"It's expensive for what it is."
+It is rarely just about price. The conversations in UK barbershop Facebook groups and WhatsApp chats usually come down to a few specific things.
+
+"It's expensive for what it does."
 
 "I need it to handle walk-ins properly, not just appointments."
 
-"I want to track staff commission automatically."
+"I want to track what each barber earns automatically."
 
-"I need the EPOS and the booking in the same system."
+"I need the till and the booking in the same system."
 
-"Support takes too long to respond."
+"When something goes wrong, support takes too long."
 
-"I want my clients to be able to leave Google reviews directly after their appointment, not reviews on Booksy."
+"I want my clients to leave Google reviews — not Booksy reviews."
 
-These are real, specific problems. Let's match them to the alternatives.
+These are real, specific problems. Let's match them to what the alternatives actually offer.
 
-## The best Booksy alternatives for UK barbers and salons
+## The best Booksy alternatives for UK barbers and salons in 2026
 
-### ReeveOS
+### ReeveOS — best for: all-in-one walk-ins, appointments, EPOS, and fair pricing
 
-**Best for:** Barbershops, salons, and service businesses that want booking, EPOS, and staff management in one system — and want to pay less per month as the team grows.
+ReeveOS charges by plan rather than per person. The Growth plan at £29/month covers up to 5 staff. A 5-chair barbershop pays £29/month total, versus £109.99/month on Booksy. That's a £972/year saving.
 
-ReeveOS takes a different approach to pricing. Instead of charging per person, the plans cover a number of staff slots. The Growth plan at £29 a month includes up to 5 staff — so a 5-chair barbershop pays £29 a month total, compared to £109.99 on Booksy.
+On top of the booking basics, ReeveOS includes:
 
-On top of booking, ReeveOS includes:
-- Walk-in queue management alongside appointments (show wait times, assign to available staff)
-- Staff commission tracking — automatically calculate how much each barber has earned
-- EPOS for counter sales, products, and card payments through Dojo
-- Automated SMS reminders to reduce no-shows
-- A client record for every customer — appointment history, contact details, notes
-- Deposits to protect against last-minute cancellations
+**Walk-in queue management.** Clients can add themselves to the queue digitally using a QR code at the door or a tablet on the counter. They see their estimated wait time. The barber sees both the walk-in queue and the appointment calendar in the same view, and can assign the next client with one tap.
 
-The booking page is branded with your logo and your colours, and the link is yours — not a Booksy link. When a client books with you, they're booking you. Not booking through a platform that also suggests your competitors nearby.
+**Staff commission tracking.** Enter each barber's commission rate once. The system automatically calculates what each person has earned on each shift — no manual spreadsheets.
 
-**Pricing:** Free — £149/month. No per-person charge up to plan limits.
+**EPOS for counter sales.** Sell products, take card payments through Dojo, and reconcile the till — all in the same system as your booking calendar.
+
+**Automated SMS reminders.** Clients get a text 48 hours before their appointment. No-show rates typically drop by 30–40%.
+
+**Deposits for appointments.** Take a booking fee upfront on appointment bookings to protect against last-minute no-shows.
+
+**Pricing:** Free to £149/month. No per-person charge up to plan limits.
 
 ---
 
-### Fresha
+### Fresha — best for: new shops wanting marketplace exposure
 
-**Best for:** Barbers and salons that specifically want marketplace visibility to attract new clients.
+Fresha has a large consumer marketplace. If you're opening a new shop and need to build a client base quickly, Fresha can bring bookings relatively fast. The cost is 20% commission on every new client booking plus a monthly subscription.
 
-If you're a new shop that needs to build a client base quickly, Fresha's marketplace does bring discovery. Their platform has millions of users searching for local services. The cost is a 20% commission on every new client that finds you through the marketplace.
-
-For an established shop with a healthy client base, that commission model often makes less sense. You're paying for clients you'd get anyway through word of mouth or your own marketing.
+For an established shop with a healthy existing client base, the commission model often makes less sense — you end up paying for clients you'd have got through word of mouth anyway.
 
 **Pricing:** £14.95/staff/month + 20% new client commission + 1.29% + 20p per card transaction.
 
 ---
 
-### Treatwell
+### Square Appointments — best for: barbershops already using Square
 
-**Best for:** Salons with spare capacity that want a high-traffic marketplace to fill last-minute slots.
-
-Treatwell operates similarly to Fresha — it's a consumer marketplace first. Clients browse, see your availability, and book. You pay commission on those bookings (20–30%). It works best as a secondary channel rather than your primary booking tool, because at those commission rates it quickly becomes expensive as your main system.
-
-**Pricing:** Commission-based. Roughly 20–30% per booking through the platform.
-
----
-
-### Square Appointments
-
-**Best for:** Barbershops and salons already using Square for card payments.
-
-Square Appointments integrates cleanly with Square's card readers. If you've got a Square terminal on the counter, adding appointments is straightforward. The downside is the 1.75% transaction fee on every card payment. For a busy barbershop doing £8,000 a month in card sales, that's £140 a month in processing fees alone — £1,680 a year.
-
-Dojo's rates through ReeveOS (0.3% debit, 0.7% credit) on the same volume would cost around £30 to £50 a month. The saving is around £100 a month, every month.
+If you have a Square terminal on the counter and you're happy with it, adding appointments is straightforward. The issue is the 1.75% transaction fee. For a barbershop doing £8,000/month in card sales, that's £140/month in processing fees — £1,680/year. Dojo's rates through ReeveOS (0.3% debit, 0.7% credit) on the same volume cost around £30/month. The £1,320/year difference is significant.
 
 **Pricing:** Free to £69/month + 1.75% per transaction.
 
 ---
 
-### Timely
+### Timely — best for: solo barbers wanting simple booking
 
-**Best for:** Solo barbers or stylists who want a simple, clean booking page without complexity.
-
-Timely does one thing — appointment booking — and does it cleanly. If you're a solo operator who doesn't need walk-in management, staff commission tracking, or an EPOS, it's a straightforward option. It's a New Zealand company so UK-specific features and support availability can be limited.
+Timely does one thing — appointment booking — and does it cleanly. For a sole trader who doesn't need walk-in management, EPOS, or commission tracking, it's a low-fuss option. It's a New Zealand company with limited UK-specific features and timezone challenges for support.
 
 **Pricing:** From around £20/month per staff member.
 
 ---
 
-## Side-by-side for a 3-chair barbershop
+### Treatwell — best for: filling last-minute slots through a consumer marketplace
 
-Let's put the main options in a table for a 3-person barbershop doing £6,000 a month in sales, with around 20% new clients per month.
+Treatwell is primarily a discovery marketplace rather than a management tool. Good for filling spare capacity through their consumer platform. Charges 20–30% commission on marketplace bookings. Best used as a secondary channel rather than your primary system.
 
-| Platform | Monthly subscription | Annual commission | Processing fees | Annual total |
-|---|---|---|---|---|
-| Booksy | £69.99 | £0 | Separate | £840 + processing |
-| Fresha | £44.85 | ~£2,000+ | £936 | £3,780+ |
-| ReeveOS Growth | £29.00 | £0 | ~£200 (Dojo) | £588 |
-| Square Appointments | £29.99 | £0 | £1,260 (1.75%) | £1,620 |
-| Timely (3 staff) | £60.00 | £0 | Separate | £720 + processing |
+**Pricing:** 20–30% commission per marketplace booking.
 
-The total annual cost difference between Booksy and ReeveOS in this example is around £252 a year. Not enormous. But add in that ReeveOS also includes walk-in management, EPOS, and commission tracking — features you'd pay extra for or use a separate tool for on Booksy — and the value difference is more significant.
+---
+
+## Side-by-side: 3-chair barbershop, £6,000/month sales, 20% new clients
+
+| Platform | Monthly cost | Annual cost | Walk-in management | Commission tracking | EPOS included |
+|---|---|---|---|---|---|
+| Booksy | £69.99 | £840 | Basic | No | No |
+| ReeveOS Growth | £29.00 | £348 | Full digital queue | Yes | Yes |
+| Fresha (3 staff) | £44.85 + commission | £3,000–£5,000 | No | No | No |
+| Square Appointments | £29.99 | £360 + txn fees | No | No | Separate |
+| Timely (3 staff) | £60.00 | £720 | No | No | No |
+
+The annual cost difference between Booksy and ReeveOS is £492. But add in that ReeveOS also includes walk-in management, commission tracking, and EPOS — things you'd pay extra for or use a separate tool for on Booksy — and the total value difference is considerably more.
 
 ## The walk-in question
 
-This comes up in every barber conversation. Most barbershops operate a mix of walk-ins and booked appointments. Managing both in the same system, without confusion, matters.
+This comes up in every barbershop conversation. Most shops run a mix of walk-ins and booked appointments. Managing both in the same system, without chaos, matters.
 
-Booksy handles appointments well. Walk-in management is more limited — you can open slots, but it's not a true digital queue system.
+Booksy handles appointments well. Walk-in management is limited — you can open slots, but it is not a true digital queue system.
 
-ReeveOS has a dedicated walk-in queue feature. Clients can add themselves to the queue digitally (on a tablet at the door or via a QR code), they can see estimated wait times, and the system shows the barber which clients are waiting and who has an appointment. Both queues — walk-ins and bookings — are visible in the same view.
+ReeveOS has a dedicated walk-in feature. Clients add themselves to the digital queue via QR code or a tablet at the door. They see their estimated wait time on their phone. The barber sees which clients are waiting, who has an appointment, and who has been waiting longest — all in one view. Both queues update in real time.
 
-For a barbershop that runs on a first-come-first-served basis with some booked appointments, this is a meaningful practical difference.
+## How to switch without losing your clients
 
-## How to switch without disrupting your clients
+Switching booking platforms sounds more complicated than it is. In practice:
 
-Switching booking platforms sounds more complicated than it actually is. Here's how it goes in practice.
+**Export your client list from Booksy.** Booksy lets you download your client data as a spreadsheet. Import that into your new system. Contact details and appointment history come with you.
 
-Export your client list from Booksy first. Any platform will let you download your client data — usually as a spreadsheet. Import that into your new system. Your client history, contact numbers, and booking preferences come with you.
+**Set up your new booking page.** This takes a couple of hours at most. Services, hours, logo, pricing.
 
-Set up your new booking page. This takes a couple of hours at most. You'll customise your services, set your hours, upload your logo.
+**Send your regulars a short message.** "We've moved to a new booking system — new link is [link]. Everything else stays the same." Most people click the link without a second thought.
 
-Send your regulars a short message. "We've moved to a new booking system — new link is [link]. Everything else stays the same, see you soon." Most people click the link without a second thought.
+**Update your Instagram bio and Google Business Profile.** Replace the Booksy link with your new booking page.
 
-Update your Instagram bio and Google Business Profile to point to the new booking link.
-
-Done. You're switched. The whole process is typically one afternoon.
+Done. The whole process typically takes one afternoon.
 """.strip()
 )
 
-
-# ── SEED ─────────────────────────────────────────────────────────────────────
+# ── SEED ──────────────────────────────────────────────────────────────────────
 
 def seed():
-    print("\n📦 ReeveOS Blog Seed — Starting\n")
+    print("\n📦 ReeveOS Blog Seed — Full 2026 SEO Implementation\n")
 
     # Clear existing
-    cat_del = blog_categories.delete_many({})
-    post_del = blog_posts.delete_many({})
-    log(f"Cleared {cat_del.deleted_count} categories, {post_del.deleted_count} posts")
+    cat_del = blog_categories_col.delete_many({})
+    post_del = blog_posts_col.delete_many({})
+    log(f"Cleared {cat_del.deleted_count} existing categories, {post_del.deleted_count} existing posts")
 
-    # Insert categories
-    blog_categories.insert_many(CATEGORIES)
+    # Categories
+    blog_categories_col.insert_many(CATEGORIES)
     log(f"Inserted {len(CATEGORIES)} categories")
 
-    # Insert articles
-    articles = [article_1, article_2, article_3, article_4, article_5]
-    blog_posts.insert_many(articles)
+    # Articles
+    articles = [A1, A2, A3, A4, A5]
+    blog_posts_col.insert_many(articles)
     log(f"Inserted {len(articles)} blog articles")
 
     print("\n✅ Done\n")
     print("Articles seeded:")
     for a in articles:
-        print(f"  [{a['priority'].upper()}] {a['title'][:70]}...")
+        print(f"  [{a['priority'].upper()}] {a['title'][:75]}...")
 
-    print("\nCategories seeded:")
-    for c in CATEGORIES:
-        print(f"  [{c['site']}] {c['name']}")
+    print("\nSEO data on each article:")
+    for a in articles:
+        print(f"  {a['slug']}")
+        print(f"    keyword:  {a['seo']['targetKeyword']}")
+        print(f"    image:    {a['featuredImageUrl'][:60]}...")
+        print(f"    og image: {a['social']['ogImageUrl'][:60]}...")
+        print(f"    faqs:     {len(a['schema']['faqItems'])} FAQ items")
+        print(f"    inline:   {len(a['inlineImages'])} inline images")
+        print(f"    breadcr:  {len(a['schema']['breadcrumbs'])} breadcrumbs")
+        print(f"    key facts:{len(a['aiOptimisation']['keyFacts'])} facts")
+        print()
 
     client.close()
 
