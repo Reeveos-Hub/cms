@@ -71,11 +71,13 @@ def article(
     # E-E-A-T
     author_name, author_title, author_bio, reviewed_by, sources, last_updated_note,
     # Schema
-    article_type, faq_items, breadcrumbs, how_to_steps=None,
+    article_type, faq_items, breadcrumbs,
     # AI
     direct_answer, key_facts, llms_summary,
     # CTA
-    cta_text, cta_url, cta_secondary_text=None, cta_secondary_url=None,
+    cta_text, cta_url,
+    # Optional
+    how_to_steps=None, cta_secondary_text=None, cta_secondary_url=None,
     # Meta
     competitor_name=None, related_tool=None, internal_notes='',
     pillar_page=None,
