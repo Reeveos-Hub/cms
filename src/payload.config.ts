@@ -19,6 +19,10 @@ import { HelpWalkthroughs } from './collections/HelpWalkthroughs'
 import { HelpCourses } from './collections/HelpCourses'
 import { HelpMedia } from './collections/HelpMedia'
 
+// Collections — Blog (reeveos.app + reevenow.com)
+import { BlogCategories } from './collections/BlogCategories'
+import { BlogPosts } from './collections/BlogPosts'
+
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
@@ -30,7 +34,7 @@ export default buildConfig({
     },
   },
 
-  collections: [Users, Tenants, Pages, Media, HelpCategories, HelpArticles, HelpWalkthroughs, HelpCourses, HelpMedia],
+  collections: [Users, Tenants, Pages, Media, HelpCategories, HelpArticles, HelpWalkthroughs, HelpCourses, HelpMedia, BlogCategories, BlogPosts],
 
   globals: [WebsiteSettings],
 
@@ -42,7 +46,7 @@ export default buildConfig({
 
   plugins: [
     seoPlugin({
-      collections: ['pages'],
+      collections: ['pages', 'blog-posts'],
       uploadsCollection: 'media',
       generateTitle: ({ doc }: any) => `${doc?.title} | ReeveOS`,
       generateDescription: ({ doc }: any) => doc?.excerpt || '',
